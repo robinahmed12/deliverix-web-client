@@ -25,6 +25,8 @@ export interface DataResponse<T> {
 
 export interface PageMeta {
   nextCursor: string | null;
+  hasMore: boolean;
+  pageSize: number;
   total?: number;
   [key: string]: unknown;
 }

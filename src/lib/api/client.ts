@@ -8,6 +8,13 @@ import type { DataResponse } from "@/lib/api/types";
 
 const BASE_PATH = "/api/v1";
 
+export interface ApiFetchOptions extends RequestInit {
+  /** Client-supplied idempotency key (API-001): backend replays identical requests. */
+  idempotencyKey?: string;
+  /** Resource version for If-Match concurrency (CONC-001/002). */
+  version?: number;
+}
+
 async function parseJsonResponse(response: Response): Promise<unknown> {
   if (response.status === 204) return undefined;
   const text = await response.text();
@@ -51,13 +58,18 @@ function isAuthEndpoint(path: string): boolean {
 }
 
 async function executeRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const { idempotencyKey, version, ...restInit } = (init ?? {}) as ApiFetchOptions;
+  const headers = new Headers(restInit.headers);
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  if (idempotencyKey) headers.set("Idempotency-Key", idempotencyKey);
+  if (version !== undefined) headers.set("If-Match", String(version));
+
   const response = await fetch(`${BASE_PATH}${path}`, {
-    ...init,
+    ...restInit,
     credentials: "same-origin",
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
+    headers,
   });
 
   if (response.ok) {
@@ -102,7 +114,7 @@ function isAbort(error: unknown): boolean {
  * - On a 401 from a non-auth endpoint: attempts one deduplicated session refresh,
  *   then retries the request once. If refresh fails, emits session-expired.
  */
-export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+export async function apiFetch<T>(path: string, init?: ApiFetchOptions): Promise<T> {
   try {
     return await executeRequest<T>(path, init);
   } catch (error) {
