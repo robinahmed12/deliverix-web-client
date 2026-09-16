@@ -3,7 +3,7 @@
 **Repo:** `C:\test\deliverix-web` (Next.js 16 App Router, React 19, TypeScript strict)
 **Source of truth:** `C:\test\Deliverix\Docs\Delivery_Management_System_Frontend_SRS_v1_Industry_Standard.md`
 **Backend:** `C:\test\Deliverix` (Express 5 + Prisma + PostgreSQL, PORT 4000), contract in `src/modules/**`
-**Last updated:** Phase 3 verified.
+**Last updated:** Phase 4 verified.
 
 ---
 
@@ -28,6 +28,7 @@
 | 1.5 | shadcn preset theme (`base-nova`/`mist`) | done | `npx shadcn@init --preset b1sAoDbjE --template next`; button `asChild` restored; `cn` from `internal-preview` pkg |
 | 2 | Orders feature | done | see §3.2; gates green both repos (§4) |
 | 3 | Dispatch | done | see §3.3; gates green (typecheck/lint/build) |
+| 4 | Drivers | done | see §3.4; gates green (typecheck/lint/build) |
 
 ## 3. Remaining phases
 
@@ -57,9 +58,17 @@
 - SRS: `DSP-*` queue & assignment workflows; at-most-one-open-assignment and single-accepted-per-driver invariants enforced by the backend.
 - Gates: typecheck / lint / build green (0 errors).
 
-### 3.4 Phase 4 — Drivers & Driver app onboarding data (NOT STARTED)
-- `src/features/drivers/` — driver list/detail, status transitions (Active/Inactive/Suspended per AUD/business), per-driver assignment/vehicle snapshot; pickers reused by dispatch.
-- SRS: `DRV-UI-001..010`, `PERM` driver permission usage.
+### 3.4 Phase 4 — Drivers (done)
+> Scope note: surfaced per the live backend contract (`src/modules/drivers/**`), which is offset-paginated (`meta {page, pageSize, total, totalPages}`) and has **no `name` on the Driver DTO** — display uses `driverCode`/`contactPhone`. Driver self-service endpoints (`/drivers/me/availability`, `/drivers/me/assignments`) are the driver MVP app's concern, not this admin UI.
+- Feature: `src/features/drivers/`
+  - `types.ts` — `DriverListItem` (no `name`), `DriverDetail` (+ `currentVehicle`), `DriverVehicle`, `DriverAvailabilityState` (Offline/Available/Assigned/OnDelivery/Unavailable), `DriverPage`/`DriverListPage`, `UserSummary` (account picker).
+  - `schemas.ts` (Zod v4) — `driverListParamsSchema` (string-enum `active`→boolean transform for URL parse), `createDriverSchema` (accountId + contactPhone required), `updateDriverSchema`.
+  - `api.ts` — `listDrivers` (offset: `page`/`pageSize (≤100)`/`state`/`active`/`search`), `getDriver`, `createDriver` (idempotent), `updateDriver` (`If-Match` version), `listUsers` (for the create-driver account picker, `users.view|users.manage`).
+  - `queries.ts` — `driverKeys`, `useDriversInfinite` (numeric `pageParam`, `page < totalPages` → next), `useDriver`, `useUserSearch`, create/update mutations (invalidate `driverKeys.all`, seed detail cache), `useDriverPermissions` (`drivers.view`/`drivers.manage`), `useIdempotencyKey` (payload-stable).
+  - Components: `drivers-explorer.tsx` (search, state/active `<select>` filters, table with state/status badges, load-more, row→detail), `create-driver-dialog.tsx` (user account search+pick list, optional code/license/qualification), `edit-driver-dialog.tsx` (contact/license/qualification, versioned PATCH), `driver-detail-view.tsx` (info + current vehicle, Edit + Activate/Deactivate via `active` toggle).
+  - Pages: `(app)/drivers` (server `initialData` page-1 + client infinite explorer, URL-filter driven), `(app)/drivers/[driverId]` (server detail + `notFound()` on miss).
+- SRS: `DRV-UI-001..010`; admins (`drivers.manage`) manage; dispatchers (`drivers.view`) read-only.
+- Gates: typecheck / lint / build green (0 errors).
 
 ### 3.5 Phase 5 — Vehicles (NOT STARTED)
 - `src/features/vehicles/` — list/detail, zone service config, status, ROUTE-UI; reuse in dispatch.
@@ -81,12 +90,12 @@
 
 ---
 
-## 4. Current verification snapshot (Phase 3)
+## 4. Current verification snapshot (Phase 4)
 
 - `npm run typecheck` → 0 errors
-- `npm run lint` → 0 errors (18 pre-existing warnings in orders/dispatch dialogs — RHF `watch()` compiler notes + unused imports in orders feature)
-- `npm run build` → 21 routes generated, `/dispatch` dynamic (SSR), 0 errors
-- Backend `C:\test\Deliverix`: not re-verified this phase; dispatch endpoints (`/dispatch/queue`, `/dispatch/workloads`, `/orders/:id/assignments`, `/orders/:id/reassign`, `/assignments/:id/withdraw|accept|reject`) assumed per contract from `src/modules/dispatch/**`.
+- `npm run lint` → 0 errors (27 pre-existing warnings: Docs/src-extracted backend, orders feature unused imports, and RHF `watch()` compiler notes in orders/dispatch/drivers dialogs)
+- `npm run build` → 21 routes generated, `/drivers` + `/drivers/[driverId]` dynamic (SSR), 0 errors
+- Backend `C:\test\Deliverix`: not re-verified this phase; drivers endpoints (`/drivers`, `/drivers/:id`) + `/users` account picker assumed per contract from `src/modules/drivers/**` / `src/modules/users/**`.
 
 ---
 
@@ -108,4 +117,4 @@
 
 ## 6. How to resume
 
-Continue at **Phase 4 (Drivers & driver onboarding data)**. First check backend `src/modules/drivers/**` (routes/schemas/service) to mirror DTOs before writing `src/features/drivers/`. Then follow §3.4 checklist and close with the three gates on both repos.
+Continue at **Phase 5 (Vehicles)**. First check backend `src/modules/vehicles/**` (routes/schemas/service) to mirror DTOs before writing `src/features/vehicles/`. Then follow §3.5 checklist and close with the three gates on both repos.
