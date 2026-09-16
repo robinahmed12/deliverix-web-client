@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Deliverix Web
 
-## Getting Started
+Frontend application for the Deliverix Delivery Management System. Built with:
 
-First, run the development server:
+- **Next.js 16** (App Router) + **React 19** + **TypeScript** (strict)
+- **TanStack Query v5** for server state
+- **React Hook Form + Zod** for forms
+- **Tailwind CSS v4 + shadcn-style** component primitives
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Backend lives in the sibling `Deliverix` repo; see the backend
+`Docs/SRS.md` for system requirements.
+
+## Development
+
+1. Start the backend on port 4000:
+
+   ```
+   PORT=4000 npm run dev
+   ```
+
+2. Start the frontend (defaults to port 3000):
+
+   ```
+   npm run dev
+   ```
+
+The Next.js dev server proxies `/api/v1/*` to the backend
+(`next.config.ts`, `BACKEND_URL` override supported).
+
+## Verification
+
+```
+npm run typecheck
+npm run lint
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Deviations from SRS API-001..004
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The SRS mandates an OpenAPI document generated from a single source of truth
+(API-001), references to it in responses (API-002/003), and an OpenAPI-driven
+client (API-004/b). This repository instead ships a **hand-written typed API
+client** ([apiFetch](./src/lib/api/client.ts) + hand-written DTOs in
+[types](./src/lib/api/types.ts)) for the following reasons:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- The backend `Deliverix` repo has no OpenAPI artifact yet; generating one is
+  out of scope of the frontend effort.
+- Hand-written types give full editor support and are the only practical
+  option against the current backend contract.
+- The typed client is owned by one place and updated against the backend
+  route catalog when phases land.
 
-## Learn More
+The DTO shapes mirror the backend envelopes (`{ data, meta }`, RFC 9457
+problem details for errors).
 
-To learn more about Next.js, take a look at the following resources:
+## Phase plan
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Phase | Scope | Status |
+| ----- | ----- | ------ |
+| 1 | Foundation: shell, auth, API/query infra | In progress |
+| 2 | Orders | Planned |
+| 3 | Drivers, vehicles, customers, configuration | Planned |
+| 4 | Dispatch & assignment | Planned |
+| 5 | Driver workflow + proof of delivery | Planned |
+| 6 | Notifications, reports, audit logs | Planned |
+| 7 | Hardening + E2E | Planned |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Each phase is verified with `typecheck`, `lint`, and a production build before
+moving on.
