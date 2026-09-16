@@ -3,7 +3,11 @@ import "server-only";
 import { cookies } from "next/headers";
 import { ApiError } from "@/lib/api/errors";
 import { env } from "@/lib/env";
-import type { DataResponse } from "@/lib/api/types";
+function isBareResourceEnvelope(body: unknown): body is { data: unknown } {
+  if (typeof body !== "object" || body === null) return false;
+  const record = body as Record<string, unknown>;
+  return "data" in record && !Array.isArray(record.data);
+}
 
 function buildCookieHeader(
   cookieStore: Awaited<ReturnType<typeof cookies>>,
@@ -44,12 +48,8 @@ export async function serverFetch<T>(
   if (res.ok) {
     const body = await parseJsonResponse(res);
     if (body === undefined) return undefined as T;
-    if (
-      typeof body === "object" &&
-      body !== null &&
-      "data" in (body as Record<string, unknown>)
-    ) {
-      return (body as DataResponse<T>).data;
+    if (isBareResourceEnvelope(body)) {
+      return body.data as T;
     }
     return body as unknown as T;
   }

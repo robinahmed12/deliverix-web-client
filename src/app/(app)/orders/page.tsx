@@ -43,7 +43,7 @@ export default async function OrdersPage({
   try {
     initialData = await loadOrders(status, search, pageSize);
   } catch {
-    notFound();
+    //notFound();
   }
 
   return (

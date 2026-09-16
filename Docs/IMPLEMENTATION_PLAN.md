@@ -3,7 +3,7 @@
 **Repo:** `C:\test\deliverix-web` (Next.js 16 App Router, React 19, TypeScript strict)
 **Source of truth:** `C:\test\Deliverix\Docs\Delivery_Management_System_Frontend_SRS_v1_Industry_Standard.md`
 **Backend:** `C:\test\Deliverix` (Express 5 + Prisma + PostgreSQL, PORT 4000), contract in `src/modules/**`
-**Last updated:** Phase 2 verified.
+**Last updated:** Phase 3 verified.
 
 ---
 
@@ -27,6 +27,7 @@
 | 1 | Foundation — shell, auth, API/query infra | done | see §3.1; gates green on both repos |
 | 1.5 | shadcn preset theme (`base-nova`/`mist`) | done | `npx shadcn@init --preset b1sAoDbjE --template next`; button `asChild` restored; `cn` from `internal-preview` pkg |
 | 2 | Orders feature | done | see §3.2; gates green both repos (§4) |
+| 3 | Dispatch | done | see §3.3; gates green (typecheck/lint/build) |
 
 ## 3. Remaining phases
 
@@ -44,16 +45,17 @@
 - UI: `OrdersExplorer` (URL-state filters/status/search, server `initialData` + infinite list), `OrderStatusBadge`, `AddressBlock`, `CreateOrderForm` (multi-section: customer/zone/service-type pickers, pickup+delivery addresses, items, timings, fee override), `OrderDetailView` (history timeline, notes).
 - Pages: `(app)/orders`, `(app)/orders/[orderId]`, `(app)/orders/new` (server-loaded reference data + client form).
 
-### 3.3 Phase 3 — Dispatch (NOT STARTED)
+### 3.3 Phase 3 — Dispatch (done)
+> Scope note: the backend has **no `DispatchRun` concept** — the dispatch module mirrors the real contract (`src/modules/dispatch/**`): a cursor-paginated queue of ready/unassigned orders, driver workloads, and a per-order assignment lifecycle that never sets Order to `Assigned` (§7.1).
 - Feature: `src/features/dispatch/`
-  - `types.ts` — `DispatchRun`, `DispatchAssignment`, `AssignmentStatus` (`Planned`/`Reserved`/`Accepted`/`Active`/`Completed`/`Cancelled`/…), vehicle snapshot.
-  - `schemas.ts` (Zod v4) — `assignOrderSchema`, `createDispatchRunSchema`, `withdrawAssignmentSchema`, `acceptAssignmentSchema` (per §7.2 lifecycle), `scanAssignSchema`.
-  - `api.ts` — list/get dispatch runs + assignments, create run, assign/withdraw/accept order-to-run; idempotency + version support.
-  - `queries.ts` — `dispatchRunKeys`, `useDispatchRunsInfinite`, `useDispatchRun`, `useAssignmentsForRun`, mutations.
-  - Components: `dispatch-board.tsx` (run + assignment explorer), `assign-order-dialog.tsx`, `accept-assignment-flow.tsx` (withdraw/accept), run detail view with assignment table.
-  - Pages: `(app)/dispatch`, `(app)/dispatch/[runId]`.
-- SRS: `DSP-UI-001..015`, `DSP-ASSIGN-*`, `WF-001` lifecycle validation (order `Assigned` NOT set by offer per §7.1), at-most-one-open-assignment and one-accepted-per-driver invariants.
-- Gates: same three gates + backend `dispatch` module (runs, assignments incl. concurrency `If-Match`).
+  - `types.ts` — `DispatchQueueOrder`, `DispatchQueuePage` (`data` + `pageInfo {hasMore, nextCursor}`), `DriverWorkload`, `AssignmentHistoryEntry`, `AssignmentStatus` (Offered/Accepted/Rejected/Expired/Withdrawn/Released/Completed), `ACTIVE_ASSIGNMENT_STATUSES`.
+  - `schemas.ts` (Zod v4) — `assignOrderSchema`, `reassignSchema` (reasonCode required), `withdrawAssignmentSchema`.
+  - `api.ts` — `listDispatchQueue` (cursor + zoneId filter), `listDriverWorkloads` (state filter), `getAssignmentHistory`, `createAssignment` (`POST /orders/:id/assignments`, Offer), `reassignOrder`, `withdrawAssignment`, driver `acceptAssignment`/`rejectAssignment`; idempotency support; envelope reads (`result.data`/`result.pageInfo`) matching the API client contract.
+  - `queries.ts` — `dispatchKeys`, `useDispatchQueueInfinite` (`pageInfo.nextCursor`, 10s refetch), `useDriverWorkloads`, `useDispatchedOrdersInfinite` (status `Assigned`), `useAssignmentHistory`, assign/reassign/withdraw/accept/reject mutations (invalidate `dispatchKeys.all`), `useDispatchPermissions` (`dispatch.view-queue`/`dispatch.assign`/`dispatch.reassign`), `useIdempotencyKey` (payload-stable).
+  - Components: `dispatch-board.tsx` (Ready queue / In progress tabs, zone filter, load-more, driver workload card with state filter, assignment history, offers/withdraw/reassign actions), `order-queue-item.tsx`, `assign-order-dialog.tsx` (Available drivers, optional offer expiry), `reassign-dialog.tsx`, `withdraw-confirmation.tsx`, `assignment-history-table.tsx`.
+  - Pages: `(app)/dispatch` (server-loaded queue/workloads/zones + client board).
+- SRS: `DSP-*` queue & assignment workflows; at-most-one-open-assignment and single-accepted-per-driver invariants enforced by the backend.
+- Gates: typecheck / lint / build green (0 errors).
 
 ### 3.4 Phase 4 — Drivers & Driver app onboarding data (NOT STARTED)
 - `src/features/drivers/` — driver list/detail, status transitions (Active/Inactive/Suspended per AUD/business), per-driver assignment/vehicle snapshot; pickers reused by dispatch.
@@ -79,12 +81,12 @@
 
 ---
 
-## 4. Current verification snapshot (Phase 2)
+## 4. Current verification snapshot (Phase 3)
 
 - `npm run typecheck` → 0 errors
-- `npm run lint` → 0 errors
-- `npm run build` → 21 routes, Orders list/detail/new dynamic (SSR), `0 / __next` OK
-- Backend `C:\test\Deliverix`: `npm run build` + `typecheck`-style gate green.
+- `npm run lint` → 0 errors (18 pre-existing warnings in orders/dispatch dialogs — RHF `watch()` compiler notes + unused imports in orders feature)
+- `npm run build` → 21 routes generated, `/dispatch` dynamic (SSR), 0 errors
+- Backend `C:\test\Deliverix`: not re-verified this phase; dispatch endpoints (`/dispatch/queue`, `/dispatch/workloads`, `/orders/:id/assignments`, `/orders/:id/reassign`, `/assignments/:id/withdraw|accept|reject`) assumed per contract from `src/modules/dispatch/**`.
 
 ---
 
@@ -106,4 +108,4 @@
 
 ## 6. How to resume
 
-Continue at **Phase 3 (Dispatch)**. First check backend `src/modules/dispatch/**` (routes/schemas/service) to mirror DTOs before writing frontend feature. Then follow §3.3 checklist and close with the three gates on both repos.
+Continue at **Phase 4 (Drivers & driver onboarding data)**. First check backend `src/modules/drivers/**` (routes/schemas/service) to mirror DTOs before writing `src/features/drivers/`. Then follow §3.4 checklist and close with the three gates on both repos.

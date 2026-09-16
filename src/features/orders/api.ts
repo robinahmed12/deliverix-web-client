@@ -81,11 +81,15 @@ export function cancelOrder(
 /*  History & Notes                                                          */
 /* -------------------------------------------------------------------------- */
 
-export function getOrderHistory(
+export async function getOrderHistory(
   id: string,
   opts?: ApiFetchOptions,
 ): Promise<OrderStatusHistoryEntry[]> {
-  return apiFetch(`/orders/${id}/history`, opts);
+  const res = await apiFetch<{ data: OrderStatusHistoryEntry[] }>(
+    `/orders/${id}/history`,
+    opts,
+  );
+  return res.data;
 }
 
 export function listOrderNotes(

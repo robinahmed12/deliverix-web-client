@@ -11,12 +11,12 @@ async function loadOrder(id: string): Promise<{
   history: OrderStatusHistoryEntry[];
   notes: OrderNote[];
 }> {
-  const [order, history, notesResult] = await Promise.all([
+  const [order, historyRes, notesResult] = await Promise.all([
     serverFetch<Order>(`/orders/${id}`),
-    serverFetch<OrderStatusHistoryEntry[]>(`/orders/${id}/history`),
+    serverFetch<{ data: OrderStatusHistoryEntry[] }>(`/orders/${id}/history`),
     serverFetch<{ data: OrderNote[] }>(`/orders/${id}/notes?pageSize=100`),
   ]);
-  return { order, history, notes: notesResult.data };
+  return { order, history: historyRes.data, notes: notesResult.data };
 }
 
 export async function generateMetadata({

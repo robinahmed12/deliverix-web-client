@@ -4,7 +4,7 @@ import {
   isSessionError,
 } from "@/lib/api/errors";
 import { notifySessionExpired, refreshSession } from "@/lib/api/session";
-import type { DataResponse } from "@/lib/api/types";
+
 
 const BASE_PATH = "/api/v1";
 
@@ -75,12 +75,8 @@ async function executeRequest<T>(path: string, init?: RequestInit): Promise<T> {
   if (response.ok) {
     const body = await parseJsonResponse(response);
     if (body === undefined) return undefined as T;
-    if (
-      typeof body === "object" &&
-      body !== null &&
-      "data" in (body as Record<string, unknown>)
-    ) {
-      return (body as DataResponse<T>).data;
+    if (isBareResourceEnvelope(body)) {
+      return body.data as T;
     }
     return body as unknown as T;
   }
@@ -106,10 +102,24 @@ function isAbort(error: unknown): boolean {
 }
 
 /**
+ * Returns true when `body` is a bare `{ data: ... }` envelope wrapping a single
+ * resource (e.g. `{ data: { id, ... } }`). Paginated envelopes (which carry a
+ * sibling `meta`/`pageInfo` key) and collection envelopes (`{ data: [...] }`)
+ * are preserved so callers can read `result.data` / `result.meta`.
+ */
+function isBareResourceEnvelope(
+  body: unknown,
+): body is { data: unknown } {
+  if (typeof body !== "object" || body === null) return false;
+  const record = body as Record<string, unknown>;
+  return "data" in record && !Array.isArray(record.data);
+}
+
+/**
  * Browser API client.
  *
  * - Same-origin `/api/v1` calls (proxied to the backend by next.config rewrites).
- * - Unwraps the `{ data: ... }` envelope used by the backend.
+ * - Unwraps bare `{ data: ... }` single-resource envelopes.
  * - Normalizes HTTP/network/abort failures into ApiError (ERR-001, API-008).
  * - On a 401 from a non-auth endpoint: attempts one deduplicated session refresh,
  *   then retries the request once. If refresh fails, emits session-expired.
