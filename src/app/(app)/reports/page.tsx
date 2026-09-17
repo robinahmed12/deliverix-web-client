@@ -1,11 +1,16 @@
-import { FeaturePlaceholder } from "@/components/shared/feature-placeholder";
+import { PageHeader } from "@/components/shared/page-header";
+import { Breadcrumbs } from "@/components/shared/breadcrumbs";
+import { ReportsExplorer } from "@/features/reports/components/reports-explorer";
 
 export default function ReportsPage() {
   return (
-    <FeaturePlaceholder
-      title="Reports"
-      description="Operational dashboards and delivery reports."
-      phase="the Reports phase (Phase 6)"
-    />
+    <div>
+      <Breadcrumbs items={[{ label: "Reports" }]} />
+      <PageHeader
+        title="Reports"
+        description="Delivery, driver, and zone performance reports."
+      />
+      <ReportsExplorer />
+    </div>
   );
 }

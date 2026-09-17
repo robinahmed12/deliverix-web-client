@@ -1,10 +1,16 @@
-import { FeaturePlaceholder } from "@/components/shared/feature-placeholder";
+import { PageHeader } from "@/components/shared/page-header";
+import { Breadcrumbs } from "@/components/shared/breadcrumbs";
+import { SettingsView } from "@/features/settings/components/settings-view";
 
 export default function SettingsPage() {
   return (
-    <FeaturePlaceholder
-      title="Settings"
-      description="Account, security, and system configuration."
-    />
+    <div>
+      <Breadcrumbs items={[{ label: "Settings" }]} />
+      <PageHeader
+        title="Settings"
+        description="Account, security, and system configuration."
+      />
+      <SettingsView />
+    </div>
   );
 }

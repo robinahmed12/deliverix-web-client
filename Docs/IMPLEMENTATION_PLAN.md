@@ -3,7 +3,7 @@
 **Repo:** `C:\test\deliverix-web` (Next.js 16 App Router, React 19, TypeScript strict)
 **Source of truth:** `C:\test\Deliverix\Docs\Delivery_Management_System_Frontend_SRS_v1_Industry_Standard.md`
 **Backend:** `C:\test\Deliverix` (Express 5 + Prisma + PostgreSQL, PORT 4000), contract in `src/modules/**`
-**Last updated:** Phase 7 verified.
+**Last updated:** Phase 8 verified.
 
 ---
 
@@ -32,8 +32,9 @@
 | 5 | Vehicles | done | see §3.5; gates green (typecheck/lint/build) |
 | 6 | Customers, Zones & Service Types | done | see §3.6; gates green (typecheck/lint/build) |
 | 7 | Tracking & External events | done | see §3.7; gates green (typecheck/lint/build) |
+| 8 | Reporting, notifications, hardening | done | see §3.8; gates green (typecheck/lint/build) |
 
-## 3. Remaining phases
+## 3. Phase details (all phases complete)
 
 ### 3.1 Phase 1 — Foundation (done)
 - App shell: `(app)` route group + `AppShell` layout with cookie/session guard; auth pages `(auth)` (login incl. MFA step, forgot/reset password, accept-invitation).
@@ -110,19 +111,51 @@
 - SRS: `TRK-*`/`EVENT-*`/`TEST-FE` public tracking do not exist in the backend; delivery-proof submission is the driver app's concern (`deliveries.execute`) — admin UI is read-only (`orders.view`).
 - Gates: typecheck / lint / build green (0 errors).
 
-### 3.8 Phase 8 — Reporting, notifications, hardening (NOT STARTED)
-- `src/features/reports/`, `src/features/notifications/`, `src/features/audit-logs/` (admin), `src/features/settings/` (profile, MFA, api tokens).
-- Hardening: systematic per-mutation SRS Appendix E review (who may call / ownership / states / If-Match / Idempotency-Key / audit / outbox / stable errors), rate-limit UI feedback, sensitive-data logging audit, concurrency + idempotency retry UI tests.
-- SRS: `RPT-*`, `NOTIF-*`, `AUD-UI-*`, `TEST-FE-001..006`, E2E login→order→dispatch→delivery (`TEST-FE-005`).
+### 3.8 Phase 8 — Reporting, notifications, hardening (done)
+> Scope note: the backend has **no `settings` module and no API-token module** (`grep -r "apiToken\|api-token\|personalAccessToken"` over `src/modules/**` = 0 hits), so the SRS "API tokens" settings screen is dropped; `/settings/security` (MFA) already existed. Reporting lives in `src/modules/reports/**`; audit in `src/modules/audit/**`; notifications in `src/modules/notifications/**`.
+- `src/features/reports/`
+  - `types.ts` — `ReportMeta`, `DashboardMetrics`, `DashboardReport`, `DeliveryReportRow`/`Summary`/`Response`, `DriverReportRow`/`Summary`/`Response`, `ZoneReportRow`/`Summary`/`Response`, param types. Dashboard `GET /reports/dashboard` returns a **single object** (unwrapped to `DashboardReport`); the other three return **collections** (preserved as `{data, summary, meta}`).
+  - `schemas.ts` — `reportRangeSchema` (YYYY-MM-DD, `to >= from`, ≤90 days to mirror the backend cap).
+  - `api.ts` — `getDashboardReport` (→`DashboardReport`), `getDeliveryReport`/`getDriverReport`/`getZoneReport` (→ responses), shared `buildQuery`.
+  - `queries.ts` — `reportKeys`, `useDriverOptions` (`/drivers?active=true&pageSize=100` for the driver filter), `useDashboardReport` (optional `enabled`), `useDeliveryReport`/`useDriverReport`/`useZoneReport` (accept `null` params to disable), 60s stale.
+  - Components: `dashboard-view.tsx` (date picker defaulting to today, metric cards, status distribution, driver availability, driver/zone performance tables, `hasPermission` + `initialData` props), `reports-explorer.tsx` (Deliveries/Drivers/Zones tabs, from/to + zone/status/driver filters, summary chips, tables, empty/loading states).
+  - Pages: `(app)/dashboard` (server `serverFetch('/reports/dashboard')` in try/catch — 403 for users without `reports.view` renders a graceful fallback), `(app)/reports` (Breadcrumbs + explorer).
+  - SRS: `RPT-*`; all endpoints `reports.view`; range cap enforced client-side to give a clear message instead of a backend 422.
+- `src/features/notifications/`
+  - `types.ts` — `AppNotification` (`channel`, `payload`, `readAt`, `orderId`), `NotificationListParams`, `NotificationMarkedRead`, `MarkAllReadResult`.
+  - `api.ts` — `listNotifications` (cursor/pageSize/unreadOnly), `markNotificationRead` (`PATCH /notifications/:id/read`), `markAllNotificationsRead` (`PATCH /notifications/read-all`). Self-scoped; no `authorize` needed.
+  - `queries.ts` — `notificationKeys`, `useNotifications` (60s refetch), `useUnreadCount` (`meta.total` from `unreadOnly=true`), mark-read / mark-all-read mutations.
+  - Components: `notifications-view.tsx` (unread-only toggle, card list, mark-read on open, "View order" deep link, mark-all-read). `src/components/shared/notification-bell.tsx` was **wired** (was a disabled placeholder): links to `/notifications` and shows an unread count badge (caps at 99+).
+  - Page: `(app)/notifications`. SRS: `NOTIF-001..004`.
+- `src/features/audit-logs/`
+  - `types.ts` — `AuditLogEntry` (`actorId`, `actorType`, `action`, `resourceType`, `resourceId`, `before`/`after`, `reason`, `requestId`, `ip`, `result`, `occurredAt`), `AuditListParams`.
+  - `api.ts` — `listAuditLogs` (`GET /audit`, cursor + from/to/actorId/action/resourceType/resourceId, `audit.view`).
+  - `queries.ts` — `auditKeys`, `useAuditLogsInfinite` (cursor `useInfiniteQuery`, pageSize 20, 15s stale).
+  - Component `audit-logs-view.tsx` — datetime range + action + resource-type filters, read-only table (result badge, IP), expandable before/after JSON + reason (`<details>`), load-more. Immutable records — no write surface.
+  - Page: `(app)/audit-logs`. SRS: `AUD-UI-*`.
+- `src/features/settings/components/settings-view.tsx` + `(app)/settings` — profile card (`useCurrentUser`: name/email/status/roles/permission count/MFA), links to Security & MFA and (when `config.manage`) System configuration, and "Sign out all devices" (`POST /auth/logout-all` → clear cache → `/login`). `/settings/security` (MFA) unchanged.
+- `src/features/config-management/`
+  - `types.ts`/`schemas.ts`/`api.ts`/`queries.ts` — failure reasons (`GET` authenticated; `POST` idempotent + `PATCH` `config.manage`), proof policies (`GET` authenticated; `POST` idempotent + `PATCH active` `config.manage`), system settings (`GET`/`PATCH` `config.manage`). Collection envelopes (`{data:[...]}`) preserved; single-resource `{data:{...}}` unwrapped; payload-stable `useIdempotencyKey`.
+  - Component `config-management-view.tsx` — tabs: Failure reasons (add/edit/toggle-active), Proof policies (create with requirement checkboxes + `minPhotos`, activate), System settings (JSON value editor; sensitive values redacted in the table, entered fresh on edit).
+  - Page: `(app)/settings/config` (linked from `/settings` only for `config.manage`).
+- Hardening (SRS §38 / Appendix E mutation review):
+  - **Ownership / who may call**: every phase-8 mutation is backend-guarded — `config.manage` for all config writes, `reports.view` for reports; notifications are self-scoped (404 on foreign id). The UI additionally hides config links for users without `config.manage`.
+  - **Idempotency**: create failure reason and create proof policy send `Idempotency-Key` derived from a canonical JSON hash of the payload (stable across retries, rotates when the payload changes). Toggle/activate/update-setting are naturally idempotent (set-to-value semantics).
+  - **Concurrency/If-Match**: phase-8 resources have no version column in the backend, so no `If-Match` is sent for them (correct per contract); order/driver/vehicle writes from earlier phases already use `If-Match`.
+  - **Stable errors**: all mutations surface `messageFor(error, …)` (429 rate-limit feedback included centrally in `errors.ts`); server errors render in an `Alert` without leaking raw payloads.
+  - **Sensitive data**: settings marked `sensitive` are displayed redacted (`••••••••`) and never pre-filled into the edit form; audit `before`/`after` for sensitive settings is `[REDACTED]` server-side already.
+  - **Audit/outbox**: no frontend action bypasses backend audit; audit log screen is read-only by design (there is intentionally no mutation surface).
+  - **No test runner**: `package.json` has only `dev/build/start/typecheck/lint` (no vitest/jest/playwright). `TEST-FE-001..006` (incl. `TEST-FE-005` E2E login→order→dispatch→delivery) remain a **repo-level follow-up** — noted rather than silently skipped.
+- Gates: typecheck / lint / build green (0 errors; 16 lint warnings — pre-existing RHF `watch()` compiler notes + a few unused imports in earlier-phase files).
 
 ---
 
-## 4. Current verification snapshot (Phase 7)
+## 4. Current verification snapshot (Phase 8)
 
 - `npm run typecheck` → 0 errors
-- `npm run lint` → 0 errors (15 warnings: order create-form/explorer + dispatch/drivers/vehicles RHF `watch()` compiler notes and a few unused imports in touched files — count down from 22 thanks to the order-detail cleanup)
-- `npm run build` → 24 routes generated, `/orders/[orderId]` now also loads-proofs (dynamic, SSR), 0 errors
-- Backend `C:\test\Deliverix`: not re-verified this phase; proof contracts per `src/modules/delivery/proof.**`. Note: there is no tracking/location/ETA endpoint anywhere in the backend — the authenticated timeline + proof viewer is the full real surface.
+- `npm run lint` → 0 errors (16 warnings: RHF `watch()` React-Compiler notes in dispatch/drivers/vehicles plus a few pre-existing unused imports in `orders/**` — all phase-8 files are warning-free)
+- `npm run build` → 24 routes generated; `/dashboard`, `/reports`, `/notifications`, `/audit-logs`, `/settings`, `/settings/config` are dynamic/SSR; 0 errors
+- Backend `C:\test\Deliverix`: not re-verified this phase; contracts read from `src/modules/reports/**`, `notifications/**`, `audit/**`, `config-management/**`, `auth/**`. Confirmed **no `settings` module, no API-token module, and no tracking/ETA endpoint** exist anywhere in the backend.
 
 ---
 
@@ -144,4 +177,8 @@
 
 ## 6. How to resume
 
-Continue at **Phase 8 (Reporting, notifications, hardening)**. Backend surfaces to mirror first: `src/modules/reports/**` (or wherever reporting lives), `notifications/**`, `audit-logs/**` (admin), `settings/**` (profile, MFA, API tokens), plus `config-management/**` (failure reasons, proof policies, settings — `config.manage`). Then do the systemic per-mutation SRS Appendix E review and close with the three gates on both repos.
+Continue with **post-Phase-8 follow-ups** (all planned phases are complete):
+1. **Re-verify the backend** (`C:\test\Deliverix`) gates with `npm run typecheck` / `npm run lint` / `npm run build` against the current frontend contract assumptions.
+2. **Add a test runner** (repo has none) and implement `TEST-FE-001..006`, including the `TEST-FE-005` E2E flow login→order→dispatch→delivery; wire CI to `typecheck && lint && build && test`.
+3. Optionally replace hand-written DTOs with **OpenAPI-generated types** (API-001..004 deviation is documented in `src/lib/api/types.ts`) if the backend starts publishing OpenAPI.
+4. Resolve the remaining lint warnings (RHF `watch()` compiler notes + unused imports in `orders/**`).

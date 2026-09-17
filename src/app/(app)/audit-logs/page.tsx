@@ -1,11 +1,16 @@
-import { FeaturePlaceholder } from "@/components/shared/feature-placeholder";
+import { PageHeader } from "@/components/shared/page-header";
+import { Breadcrumbs } from "@/components/shared/breadcrumbs";
+import { AuditLogsView } from "@/features/audit-logs/components/audit-logs-view";
 
 export default function AuditLogsPage() {
   return (
-    <FeaturePlaceholder
-      title="Audit Logs"
-      description="Read-only audit trail of critical system changes."
-      phase="the Reports phase (Phase 6)"
-    />
+    <div>
+      <Breadcrumbs items={[{ label: "Audit Logs" }]} />
+      <PageHeader
+        title="Audit Logs"
+        description="Read-only audit trail of critical system changes."
+      />
+      <AuditLogsView />
+    </div>
   );
 }

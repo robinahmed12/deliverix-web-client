@@ -14,17 +14,36 @@ async function loadReferenceData() {
     serverFetch<{ data: ServiceTypeSummary[] }>("/service-types"),
   ]);
   return {
-    zones: zonesResult.data,
+    zones: zonesResult!.data,
     serviceTypes: serviceTypesResult.data,
   };
 }
 
 export default async function NewOrderPage() {
   let refData;
+
   try {
     refData = await loadReferenceData();
-  } catch {
-    notFound();
+  } catch (error) {
+    console.error("Failed to load order reference data:", error);
+
+    return (
+      <div>
+        <Breadcrumbs
+          items={[
+            { label: "Orders", href: "/orders" },
+            { label: "New order" },
+          ]}
+        />
+
+        <PageHeader
+          title="Create order"
+          description="Fill in the details to create a new delivery order."
+        />
+
+        <p>Unable to load order data. Please try again.</p>
+      </div>
+    );
   }
 
   return (
@@ -35,10 +54,12 @@ export default async function NewOrderPage() {
           { label: "New order" },
         ]}
       />
+
       <PageHeader
         title="Create order"
         description="Fill in the details to create a new delivery order."
       />
+
       <CreateOrderForm
         initialZones={refData.zones}
         initialServiceTypes={refData.serviceTypes}

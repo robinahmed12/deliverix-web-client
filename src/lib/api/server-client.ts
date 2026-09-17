@@ -35,7 +35,7 @@ export async function serverFetch<T>(
 ): Promise<T> {
   const cookieStore = await cookies();
 
-  const res = await fetch(`${env.BACKEND_URL}${path}`, {
+  const res = await fetch(`${env.BACKEND_URL}/api/v1${path}`, {
     ...init,
     cache: "no-store",
     headers: {
