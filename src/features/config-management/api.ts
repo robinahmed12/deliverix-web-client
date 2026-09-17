@@ -18,14 +18,14 @@ import type {
 export function listFailureReasons(
   opts?: ApiFetchOptions,
 ): Promise<FailureReasonListResponse> {
-  return apiFetch("/failure-reasons", opts);
+  return apiFetch("/config/failure-reasons", opts);
 }
 
 export function createFailureReason(
   data: CreateFailureReasonInput,
   idempotencyKey?: string,
 ): Promise<FailureReason> {
-  return apiFetch("/failure-reasons", {
+  return apiFetch("/config/failure-reasons", {
     method: "POST",
     body: JSON.stringify(data),
     idempotencyKey,
@@ -36,7 +36,7 @@ export function updateFailureReason(
   id: string,
   data: UpdateFailureReasonInput,
 ): Promise<FailureReason> {
-  return apiFetch(`/failure-reasons/${id}`, {
+  return apiFetch(`/config/failure-reasons/${id}`, {
     method: "PATCH",
     body: JSON.stringify(data),
   });
@@ -49,14 +49,14 @@ export function updateFailureReason(
 export function listProofPolicies(
   opts?: ApiFetchOptions,
 ): Promise<ProofPolicyListResponse> {
-  return apiFetch("/proof-policies", opts);
+  return apiFetch("/config/proof-policies", opts);
 }
 
 export function createProofPolicy(
   data: CreateProofPolicyInput,
   idempotencyKey?: string,
 ): Promise<ProofPolicySummary> {
-  return apiFetch("/proof-policies", {
+  return apiFetch("/config/proof-policies", {
     method: "POST",
     body: JSON.stringify(data),
     idempotencyKey,
@@ -67,7 +67,7 @@ export function activateProofPolicy(
   id: string,
   active: boolean,
 ): Promise<ProofPolicySummary> {
-  return apiFetch(`/proof-policies/${id}`, {
+  return apiFetch(`/config/proof-policies/${id}`, {
     method: "PATCH",
     body: JSON.stringify({ active }),
   });
@@ -80,14 +80,14 @@ export function activateProofPolicy(
 export function listSettings(
   opts?: ApiFetchOptions,
 ): Promise<SettingListResponse> {
-  return apiFetch("/settings", opts);
+  return apiFetch("/config/settings", opts);
 }
 
 export function updateSetting(
   key: string,
   value: unknown,
 ): Promise<SystemSettingUpdated> {
-  return apiFetch(`/settings/${encodeURIComponent(key)}`, {
+  return apiFetch(`/config/settings/${encodeURIComponent(key)}`, {
     method: "PATCH",
     body: JSON.stringify({ value }),
   });

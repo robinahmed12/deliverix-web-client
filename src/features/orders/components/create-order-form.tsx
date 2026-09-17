@@ -28,6 +28,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import type {
+  CustomerSummary,
   ZoneSummary,
   ServiceTypeSummary,
 } from "../types";
@@ -97,12 +98,20 @@ export function CreateOrderForm({
     remove: removeItem,
   } = useFieldArray({ control: form.control, name: "items" });
 
-  const selectedZone = React.useMemo(() => {
-    const zoneId = form.watch("zoneId");
-    return initialZones.find((z) => z.id === zoneId) ?? null;
-  }, [form.watch("zoneId"), initialZones]);
+  const zoneIdValue = useWatch({ control: form.control, name: "zoneId" });
 
-  const customerSearch = useCustomerSearch(form.watch("customerId") ?? "");
+  const selectedZone = React.useMemo(
+    () => initialZones.find((z) => z.id === zoneIdValue) ?? null,
+    [zoneIdValue, initialZones],
+  );
+
+  const [customerQuery, setCustomerQuery] = React.useState("");
+  const [selectedCustomer, setSelectedCustomer] =
+    React.useState<CustomerSummary | null>(null);
+  const [customerPickerOpen, setCustomerPickerOpen] = React.useState(false);
+  const debouncedCustomerQuery = useDebouncedValue(customerQuery, 250);
+  const customersQuery = useCustomerSearch(debouncedCustomerQuery);
+  const customerResults = customersQuery.data?.data ?? [];
 
   async function onSubmit(values: CreateOrderInput) {
     setServerError(null);
@@ -153,15 +162,98 @@ export function CreateOrderForm({
                 control={form.control}
                 name="customerId"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="relative">
                     <FormLabel>Customer</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Search by name..."
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.value)}
-                      />
-                    </FormControl>
+                    {selectedCustomer ? (
+                      <div className="flex items-center justify-between gap-2 rounded-lg border border-input px-3 py-2 text-sm">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">
+                            {selectedCustomer.name}
+                          </p>
+                          {selectedCustomer.email && (
+                            <p className="truncate text-xs text-muted-foreground">
+                              {selectedCustomer.email}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedCustomer(null);
+                            setCustomerQuery("");
+                            setCustomerPickerOpen(false);
+                            form.setValue("customerId", "", {
+                              shouldValidate: false,
+                            });
+                          }}
+                        >
+                          Change
+                        </Button>
+                      </div>
+                    ) : (
+                      <FormControl>
+                        <Input
+                          placeholder="Search customers by name..."
+                          autoComplete="off"
+                          value={customerQuery}
+                          onFocus={() => setCustomerPickerOpen(true)}
+                          onBlur={() =>
+                            window.setTimeout(
+                              () => setCustomerPickerOpen(false),
+                              150,
+                            )
+                          }
+                          onChange={(e) => {
+                            setCustomerQuery(e.target.value);
+                            setCustomerPickerOpen(true);
+                          }}
+                        />
+                      </FormControl>
+                    )}
+                    {!selectedCustomer &&
+                      customerPickerOpen &&
+                      debouncedCustomerQuery.length > 0 && (
+                        <div className="absolute top-full z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg border bg-popover text-popover-foreground shadow-md">
+                          {customersQuery.isFetching &&
+                            customerResults.length === 0 && (
+                              <p className="px-3 py-2 text-sm text-muted-foreground">
+                                Searching...
+                              </p>
+                            )}
+                          {!customersQuery.isFetching &&
+                            customerResults.length === 0 && (
+                              <p className="px-3 py-2 text-sm text-muted-foreground">
+                                No customers found.
+                              </p>
+                            )}
+                          {customerResults.map((customer) => (
+                            <button
+                              key={customer.id}
+                              type="button"
+                              className="block w-full px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                field.onChange(customer.id);
+                                form.clearErrors("customerId");
+                                setSelectedCustomer(customer);
+                                setCustomerQuery("");
+                                setCustomerPickerOpen(false);
+                              }}
+                            >
+                              <span className="font-medium">
+                                {customer.name}
+                              </span>
+                              {customer.email && (
+                                <span className="ml-2 text-xs text-muted-foreground">
+                                  {customer.email}
+                                </span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -596,4 +688,15 @@ function AddressSection({
       </CardContent>
     </Card>
   );
+}
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = React.useState(value);
+
+  React.useEffect(() => {
+    const handle = window.setTimeout(() => setDebounced(value), delayMs);
+    return () => window.clearTimeout(handle);
+  }, [value, delayMs]);
+
+  return debounced;
 }

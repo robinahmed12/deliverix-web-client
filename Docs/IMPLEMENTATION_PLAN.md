@@ -2,8 +2,8 @@
 
 **Repo:** `C:\test\deliverix-web` (Next.js 16 App Router, React 19, TypeScript strict)
 **Source of truth:** `C:\test\Deliverix\Docs\Delivery_Management_System_Frontend_SRS_v1_Industry_Standard.md`
-**Backend:** `C:\test\Deliverix` (Express 5 + Prisma + PostgreSQL, PORT 4000), contract in `src/modules/**`
-**Last updated:** Phase 8 verified.
+**Backend:** `C:\test\Deliverix` (Express 5 + Prisma + PostgreSQL, PORT 5000), contract in `src/modules/**` and live `src/app.ts` route mounts
+**Last updated:** Post-Phase-8 live backend verification (order module E2E).
 
 ---
 
@@ -177,8 +177,17 @@
 
 ## 6. How to resume
 
-Continue with **post-Phase-8 follow-ups** (all planned phases are complete):
-1. **Re-verify the backend** (`C:\test\Deliverix`) gates with `npm run typecheck` / `npm run lint` / `npm run build` against the current frontend contract assumptions.
-2. **Add a test runner** (repo has none) and implement `TEST-FE-001..006`, including the `TEST-FE-005` E2E flow login→order→dispatch→delivery; wire CI to `typecheck && lint && build && test`.
-3. Optionally replace hand-written DTOs with **OpenAPI-generated types** (API-001..004 deviation is documented in `src/lib/api/types.ts`) if the backend starts publishing OpenAPI.
-4. Resolve the remaining lint warnings (RHF `watch()` compiler notes + unused imports in `orders/**`).
+All planned phases are complete. Post-Phase-8 **live verification** against the running backend (`:5000`) uncovered and fixed one blocking backend bug plus three frontend gaps:
+
+- **Backend fix** — `C:\test\Deliverix\src\shared\middleware\validate.ts`: Express 5 exposes `req.query` as a getter-only accessor, so `req.query = parsed` threw a `TypeError` and **every query-validated route returned 500** (all list endpoints: orders, customers, zones, service-types, drivers, vehicles, notifications, reports). Now shadowed via `Object.defineProperty`. Regression test added at `tests/shared/validate.test.ts` (first backend test; `supertest` was already a devDependency) → `npm test` = 3 passed.
+- **Frontend base paths** — `config-management/api.ts` corrected to `/config/failure-reasons|proof-policies|settings` and `audit-logs/api.ts` to `/audit-logs`, matching the live `src/app.ts` mounts (`/api/v1/config`, `/api/v1/audit-logs`).
+- **`orders/types.ts`** — `OrderItem` decimals (`weight`, `lengthCm`, `widthCm`, `heightCm`) are `string | null`, matching Prisma `Decimal` JSON serialization (`deliveryFee` was already `string`).
+- **`orders/components/create-order-form.tsx`** — replaced the non-functional customer field (raw input wrote a name into the `customerId` cuid field and search results were never rendered) with a debounced customer search/select picker; fixed the `useWatch`/`useMemo` compiler warnings.
+
+**Verified E2E** (direct and via the Next.js proxy): `POST /auth/login` 200 → `POST /customers` 201 → `POST /orders` 201 (`ORD20260917788804`) → `GET /orders/:id` 200 → `/history` 200 → `/notes` 200 → list 200; reports/notifications/audit-logs/config all 200.
+
+Remaining follow-ups:
+1. **Frontend test runner** (repo has none): add vitest/RTL + Playwright and implement `TEST-FE-001..006`, including the `TEST-FE-005` E2E flow login→order→dispatch→delivery; wire CI to `typecheck && lint && build && test`.
+2. Optionally replace hand-written DTOs with **OpenAPI-generated types** (deviation documented in `src/lib/api/types.ts`).
+3. Resolve the remaining lint warnings (RHF `watch()` compiler notes + unused imports in `orders/**`).
+4. Extend backend test coverage beyond `tests/shared/validate.test.ts`.

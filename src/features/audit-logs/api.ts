@@ -19,5 +19,5 @@ export function listAuditLogs(
   params: AuditListParams = {},
   opts?: ApiFetchOptions,
 ): Promise<PaginatedResponse<AuditLogEntry>> {
-  return apiFetch(`/audit${buildQuery(params)}`, opts);
+  return apiFetch(`/audit-logs${buildQuery(params)}`, opts);
 }

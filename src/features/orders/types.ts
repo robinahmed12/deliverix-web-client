@@ -49,11 +49,11 @@ export interface OrderItem {
   name: string;
   description: string | null;
   quantity: number;
-  weight: number | null;
+  weight: string | null;
   weightUnit: string | null;
-  lengthCm: number | null;
-  widthCm: number | null;
-  heightCm: number | null;
+  lengthCm: string | null;
+  widthCm: string | null;
+  heightCm: string | null;
 }
 
 export interface Order {
