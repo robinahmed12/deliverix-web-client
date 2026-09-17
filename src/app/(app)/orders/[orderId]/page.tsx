@@ -4,19 +4,31 @@ import { serverFetch } from "@/lib/api/server-client";
 import { PageHeader } from "@/components/shared/page-header";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { OrderDetailView } from "@/features/orders/components/order-detail-view";
-import type { Order, OrderStatusHistoryEntry, OrderNote } from "@/features/orders/types";
+import type {
+  DeliveryProof,
+  Order,
+  OrderStatusHistoryEntry,
+  OrderNote,
+} from "@/features/orders/types";
 
 async function loadOrder(id: string): Promise<{
   order: Order;
   history: OrderStatusHistoryEntry[];
   notes: OrderNote[];
+  proofs: DeliveryProof[];
 }> {
-  const [order, historyRes, notesResult] = await Promise.all([
+  const [order, historyRes, notesResult, proofsResult] = await Promise.all([
     serverFetch<Order>(`/orders/${id}`),
     serverFetch<{ data: OrderStatusHistoryEntry[] }>(`/orders/${id}/history`),
     serverFetch<{ data: OrderNote[] }>(`/orders/${id}/notes?pageSize=100`),
+    serverFetch<{ data: DeliveryProof[] }>(`/orders/${id}/proofs?pageSize=100`),
   ]);
-  return { order, history: historyRes.data, notes: notesResult.data };
+  return {
+    order,
+    history: historyRes.data,
+    notes: notesResult.data,
+    proofs: proofsResult.data,
+  };
 }
 
 export async function generateMetadata({
@@ -58,6 +70,7 @@ export default async function OrderDetailPage({
         initialOrder={data.order}
         initialHistory={data.history}
         initialNotes={data.notes}
+        initialProofs={data.proofs}
       />
     </div>
   );

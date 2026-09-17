@@ -11,6 +11,7 @@ import {
   getOrder,
   getOrderHistory,
   listOrderNotes,
+  listOrderProofs,
   listZones,
   listServiceTypes,
   listCustomers,
@@ -31,6 +32,7 @@ import type {
   OrderPage,
   OrderStatusHistoryEntry,
   OrderNote,
+  DeliveryProof,
   CustomerSummary,
   CustomerPageMeta,
   ZoneSummary,
@@ -48,6 +50,7 @@ export const ordersKeys = {
   detail: (id: string) => [...ordersKeys.all, "detail", id] as const,
   history: (id: string) => [...ordersKeys.all, "history", id] as const,
   notes: (id: string) => [...ordersKeys.all, "notes", id] as const,
+  proofs: (id: string) => [...ordersKeys.all, "proofs", id] as const,
 } as const;
 
 const referenceKeys = {
@@ -114,6 +117,18 @@ export function useOrderNotes(id: string, initialData?: OrderNote[]) {
     queryKey: ordersKeys.notes(id),
     queryFn: async () => {
       const result = await listOrderNotes(id, { pageSize: 100 });
+      return result.data;
+    },
+    initialData,
+    staleTime: 30_000,
+  });
+}
+
+export function useOrderProofs(id: string, initialData?: DeliveryProof[]) {
+  return useQuery({
+    queryKey: ordersKeys.proofs(id),
+    queryFn: async () => {
+      const result = await listOrderProofs(id, { pageSize: 100 });
       return result.data;
     },
     initialData,

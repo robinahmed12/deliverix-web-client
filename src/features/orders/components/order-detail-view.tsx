@@ -1,32 +1,28 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
 import { OrderStatusBadge } from "../components/order-status-badge";
 import { AddressBlock } from "../components/address-block";
+import { ProofOfDelivery } from "../components/proof-of-delivery";
 import {
   useOrder,
   useOrderHistory,
   useOrderNotes,
+  useOrderProofs,
   useMarkOrderReadyMutation,
   useCancelOrderMutation,
   useCreateOrderNoteMutation,
   useOrderPermissions,
   useIdempotencyKey,
-  ordersKeys,
 } from "../queries";
 import { formatCurrency, formatDateTime } from "@/lib/utils/formatters";
 import {
   CANCELLABLE_ORDER_STATUSES,
-  EDITABLE_ORDER_STATUSES,
   TERMINAL_ORDER_STATUSES,
 } from "../types";
-import type { Order, OrderStatusHistoryEntry, OrderNote } from "../types";
+import type { Order, OrderStatusHistoryEntry, OrderNote, DeliveryProof } from "../types";
 import {
   Dialog,
   DialogContent,
@@ -42,20 +38,22 @@ interface OrderDetailViewProps {
   initialOrder: Order;
   initialHistory: OrderStatusHistoryEntry[];
   initialNotes: OrderNote[];
+  initialProofs: DeliveryProof[];
 }
 
 export function OrderDetailView({
   initialOrder,
   initialHistory,
   initialNotes,
+  initialProofs,
 }: OrderDetailViewProps) {
-  const router = useRouter();
   const getKey = useIdempotencyKey();
   const { canEdit, canCancel, canAddNotes } = useOrderPermissions();
 
   const orderQuery = useOrder(initialOrder.id, initialOrder);
   const historyQuery = useOrderHistory(initialOrder.id, initialHistory);
   const notesQuery = useOrderNotes(initialOrder.id, initialNotes);
+  const proofsQuery = useOrderProofs(initialOrder.id, initialProofs);
 
   const readyMutation = useMarkOrderReadyMutation(initialOrder.id);
   const cancelMutation = useCancelOrderMutation(initialOrder.id);
@@ -64,6 +62,7 @@ export function OrderDetailView({
   const order = orderQuery.data ?? initialOrder;
   const history = historyQuery.data ?? initialHistory;
   const notes = notesQuery.data ?? initialNotes;
+  const proofs = proofsQuery.data ?? initialProofs;
 
   const [cancelOpen, setCancelOpen] = React.useState(false);
   const [cancelReason, setCancelReason] = React.useState("");
@@ -173,7 +172,7 @@ export function OrderDetailView({
             <p className="text-sm text-muted-foreground">No items.</p>
           ) : (
             <div className="space-y-2">
-              {order.items.map((item, i) => (
+              {order.items.map((item) => (
                 <div
                   key={item.id}
                   className="flex items-baseline justify-between border-b pb-2 last:border-0"
@@ -272,6 +271,8 @@ export function OrderDetailView({
           )}
         </CardContent>
       </Card>
+
+      <ProofOfDelivery proofs={proofs} />
 
       {canAddNotes && (
         <Card>

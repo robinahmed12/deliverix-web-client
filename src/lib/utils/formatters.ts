@@ -54,3 +54,22 @@ export function initials(name: string): string {
     .map((p) => p.charAt(0).toUpperCase())
     .join("");
 }
+
+export function formatBytes(bytes: number | null | undefined): string {
+  if (
+    bytes === null ||
+    bytes === undefined ||
+    typeof bytes !== "number" ||
+    !Number.isFinite(bytes)
+  ) {
+    return "—";
+  }
+  const units = ["B", "KB", "MB", "GB"];
+  let value = bytes;
+  let index = 0;
+  while (value >= 1024 && index < units.length - 1) {
+    value /= 1024;
+    index += 1;
+  }
+  return `${value.toFixed(index === 0 || value >= 10 ? 0 : 1)} ${units[index]}`;
+}

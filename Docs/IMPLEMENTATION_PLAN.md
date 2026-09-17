@@ -3,7 +3,7 @@
 **Repo:** `C:\test\deliverix-web` (Next.js 16 App Router, React 19, TypeScript strict)
 **Source of truth:** `C:\test\Deliverix\Docs\Delivery_Management_System_Frontend_SRS_v1_Industry_Standard.md`
 **Backend:** `C:\test\Deliverix` (Express 5 + Prisma + PostgreSQL, PORT 4000), contract in `src/modules/**`
-**Last updated:** Phase 6 verified.
+**Last updated:** Phase 7 verified.
 
 ---
 
@@ -31,6 +31,7 @@
 | 4 | Drivers | done | see §3.4; gates green (typecheck/lint/build) |
 | 5 | Vehicles | done | see §3.5; gates green (typecheck/lint/build) |
 | 6 | Customers, Zones & Service Types | done | see §3.6; gates green (typecheck/lint/build) |
+| 7 | Tracking & External events | done | see §3.7; gates green (typecheck/lint/build) |
 
 ## 3. Remaining phases
 
@@ -98,9 +99,16 @@
 - SRS: `CUST-UI-001..014`, `ZONE-UI-001..012`, `SVC-*`; admin config screens exercise backend-exposed management (no browser-computed fees — backend `Decimal` is authoritative).
 - Gates: typecheck / lint / build green (0 errors; 22 pre-existing warnings — same RHF `watch()`/unused-import notes as Phase 5).
 
-### 3.7 Phase 7 — Tracking & External events (NOT STARTED)
-- `src/features/tracking/` — public tracking lookup by tracking number; live map/status timeline; webhook/outbox consumer surface (backend).
-- SRS: `TRK-*`, `EVENT-*`, `TEST-FE` public tracking flow.
+### 3.7 Phase 7 — Tracking & External events (done)
+> Re-scoped to what actually exists in the backend: there is **no** tracking/location/ETA endpoint, no public lookup surface, and no outbox consumer. The status timeline (`GET /orders/:id/history`) already rendered on the order detail page. The provably-existing "event/evidence" surface is the **delivery-proof module** — so Phase 7 delivered the authenticated Proof-of-Delivery viewer on the order detail page.
+- `src/features/orders/types.ts` — `ProofEvidenceType` (RecipientName/Photo/Signature/ConfirmationFlag/Otp), `ProofStatus` (Pending/Accepted/Rejected), `ProofFileStatus`, `DeliveryProofFile`/`DeliveryProof` DTOs mirroring `proof.service.ts` (`signedUrl` only when file `Accepted`).
+- `src/features/orders/api.ts` — `listOrderProofs` → `GET /orders/:id/proofs` (`orders.view`, cursor page).
+- `src/features/orders/queries.ts` — `ordersKeys.proofs`, `useOrderProofs` (pageSize 100, 30s stale).
+- `src/features/orders/components/proof-of-delivery.tsx` — evidence-type label, status badge (success/warning/destructive), recipient name / confirmation / OTP / file-with-signed-URL renders, corrected stamp, read-only.
+- `order-detail-view.tsx` — new Proof of delivery card (server-seeded `initialProofs`); also removed pre-existing unused imports (lint warnings 22 → 15).
+- `src/app/(app)/orders/[orderId]/page.tsx` — seeds proofs alongside order/history/notes.
+- SRS: `TRK-*`/`EVENT-*`/`TEST-FE` public tracking do not exist in the backend; delivery-proof submission is the driver app's concern (`deliveries.execute`) — admin UI is read-only (`orders.view`).
+- Gates: typecheck / lint / build green (0 errors).
 
 ### 3.8 Phase 8 — Reporting, notifications, hardening (NOT STARTED)
 - `src/features/reports/`, `src/features/notifications/`, `src/features/audit-logs/` (admin), `src/features/settings/` (profile, MFA, api tokens).
@@ -109,12 +117,12 @@
 
 ---
 
-## 4. Current verification snapshot (Phase 6)
+## 4. Current verification snapshot (Phase 7)
 
 - `npm run typecheck` → 0 errors
-- `npm run lint` → 0 errors (22 pre-existing warnings: order feature unused imports, and RHF `watch()` compiler notes in dispatch/drivers/orders/vehicles dialogs)
-- `npm run build` → 24 routes generated, `/customers`, `/customers/[customerId]`, `/zones`, `/zones/[zoneId]`, `/service-types` dynamic (SSR), 0 errors
-- Backend `C:\test\Deliverix`: not re-verified this phase; contracts per `src/modules/customers|zones|service-types/**` (customers offset-paged + address book, zones/service-types `{data: [...]}`). Two frontend/backend nits to revisit later: PathKit/leaf-style map for coverage areas (currently tabular), and zone-area editing (backend exposes areas only at create).
+- `npm run lint` → 0 errors (15 warnings: order create-form/explorer + dispatch/drivers/vehicles RHF `watch()` compiler notes and a few unused imports in touched files — count down from 22 thanks to the order-detail cleanup)
+- `npm run build` → 24 routes generated, `/orders/[orderId]` now also loads-proofs (dynamic, SSR), 0 errors
+- Backend `C:\test\Deliverix`: not re-verified this phase; proof contracts per `src/modules/delivery/proof.**`. Note: there is no tracking/location/ETA endpoint anywhere in the backend — the authenticated timeline + proof viewer is the full real surface.
 
 ---
 
@@ -136,4 +144,4 @@
 
 ## 6. How to resume
 
-Continue at **Phase 7 (Tracking & External events — authenticated timeline only)**. Confirmed scope earlier: `GET /orders/:orderId/tracking` always returns `location: null`, `eta: null`; no public lookup, no live map. Build `src/features/tracking/` as a status/event timeline on the authenticated order detail page (reuse `getOrder`/`getOrderHistory`). Follow backend `src/modules/tracking/**` (+ `delivery/proof/files`, `config-management` for proof policies) before writing code, then close with the three gates on both repos.
+Continue at **Phase 8 (Reporting, notifications, hardening)**. Backend surfaces to mirror first: `src/modules/reports/**` (or wherever reporting lives), `notifications/**`, `audit-logs/**` (admin), `settings/**` (profile, MFA, API tokens), plus `config-management/**` (failure reasons, proof policies, settings — `config.manage`). Then do the systemic per-mutation SRS Appendix E review and close with the three gates on both repos.

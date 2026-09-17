@@ -8,6 +8,7 @@ import type {
 import type {
   CustomerPageMeta,
   CustomerSummary,
+  DeliveryProof,
   Order,
   OrderListParams,
   OrderNote,
@@ -110,6 +111,14 @@ export function createOrderNote(
     body: JSON.stringify({ note: body }),
     idempotencyKey,
   });
+}
+
+export function listOrderProofs(
+  id: string,
+  params?: { cursor?: string; pageSize?: number },
+  opts?: ApiFetchOptions,
+): Promise<PaginatedResponse<DeliveryProof>> {
+  return apiFetch(`/orders/${id}/proofs${buildListQuery(params ?? {})}`, opts);
 }
 
 /* -------------------------------------------------------------------------- */

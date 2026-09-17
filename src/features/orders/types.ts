@@ -101,6 +101,53 @@ export interface OrderNote {
   createdAt: string;
 }
 
+export const PROOF_EVIDENCE_TYPES = [
+  "RecipientName",
+  "Photo",
+  "Signature",
+  "ConfirmationFlag",
+  "Otp",
+] as const;
+
+export type ProofEvidenceType = (typeof PROOF_EVIDENCE_TYPES)[number];
+
+export const PROOF_STATUSES = ["Pending", "Accepted", "Rejected"] as const;
+
+export type ProofStatus = (typeof PROOF_STATUSES)[number];
+
+export const PROOF_FILE_STATUSES = [
+  "Pending",
+  "Accepted",
+  "Rejected",
+  "FailedProcessing",
+] as const;
+
+export type ProofFileStatus = (typeof PROOF_FILE_STATUSES)[number];
+
+export interface DeliveryProofFile {
+  id: string;
+  originalName: string | null;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  status: ProofFileStatus;
+}
+
+export interface DeliveryProof {
+  id: string;
+  evidenceType: ProofEvidenceType;
+  evidenceValue: string | null;
+  confirmationFlag: boolean | null;
+  status: ProofStatus;
+  submittedById: string | null;
+  submittedAt: string | null;
+  correctedById: string | null;
+  correctedAt: string | null;
+  file: DeliveryProofFile | null;
+  signedUrl: string | null;
+  version: number;
+  createdAt: string;
+}
+
 export interface CustomerSummary {
   id: string;
   name: string;
