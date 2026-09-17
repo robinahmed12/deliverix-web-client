@@ -3,7 +3,7 @@
 **Repo:** `C:\test\deliverix-web` (Next.js 16 App Router, React 19, TypeScript strict)
 **Source of truth:** `C:\test\Deliverix\Docs\Delivery_Management_System_Frontend_SRS_v1_Industry_Standard.md`
 **Backend:** `C:\test\Deliverix` (Express 5 + Prisma + PostgreSQL, PORT 4000), contract in `src/modules/**`
-**Last updated:** Phase 4 verified.
+**Last updated:** Phase 5 verified.
 
 ---
 
@@ -29,6 +29,7 @@
 | 2 | Orders feature | done | see §3.2; gates green both repos (§4) |
 | 3 | Dispatch | done | see §3.3; gates green (typecheck/lint/build) |
 | 4 | Drivers | done | see §3.4; gates green (typecheck/lint/build) |
+| 5 | Vehicles | done | see §3.5; gates green (typecheck/lint/build) |
 
 ## 3. Remaining phases
 
@@ -70,8 +71,17 @@
 - SRS: `DRV-UI-001..010`; admins (`drivers.manage`) manage; dispatchers (`drivers.view`) read-only.
 - Gates: typecheck / lint / build green (0 errors).
 
-### 3.5 Phase 5 — Vehicles (NOT STARTED)
-- `src/features/vehicles/` — list/detail, zone service config, status, ROUTE-UI; reuse in dispatch.
+### 3.5 Phase 5 — Vehicles (done)
+> Mirrors the live backend contract (`src/modules/vehicles/**`): offset-paginated (`meta {page, pageSize, total, totalPages}`), writes gated on `drivers.manage` (+ `vehicles.manage` per seed for nav), reads on `drivers.view`/`drivers.manage`/`dispatch.view-queue`. No hard-delete surface — operational status (`Active`/`Maintenance`/`Inactive`) only.
+- Feature: `src/features/vehicles/`
+  - `types.ts` — `VehicleListItem`, `VehicleDetail` (+ `currentDriver`), `VehicleOperationalStatus`, `VehiclePage`/`VehicleListPage`, `AllocationResult`.
+  - `schemas.ts` (Zod v4) — `vehicleListParamsSchema` (string-enum `status` for URL parse, coerce page/pageSize), `createVehicleSchema` (registration/type/capacity required), `updateVehicleSchema` (versioned PATCH, no registration change), `allocateVehicleSchema`.
+  - `api.ts` — `listVehicles` (offset: `page`/`pageSize (≤100)`/`status`/`search`), `getVehicle`, `createVehicle` (idempotent), `updateVehicle` (`If-Match`), `allocateVehicle`/`deallocateVehicle` (idempotent).
+  - `queries.ts` — `vehicleKeys`, `useVehiclesInfinite` (numeric `pageParam`, `page < totalPages` → next), `useVehicle`, `useDriverSearch` (allocate picker), create/update/allocate/deallocate mutations (invalidate `vehicleKeys.all` + `drivers`), `useVehiclePermissions` (`drivers.*`/`dispatch.view-queue` + seed `vehicles.*`), `useIdempotencyKey` (payload-stable).
+  - Components: `vehicles-explorer.tsx` (search, status filter, table with status badge, load-more, row→detail), `create-vehicle-dialog.tsx`, `edit-vehicle-dialog.tsx` (status select + versioned PATCH), `allocate-vehicle-dialog.tsx` (driver search+pick, optional reason code), `vehicle-detail-view.tsx` (info + current driver, Edit/Allocate/Reassign/Release with two-step confirm for deallocate).
+  - Pages: `(app)/vehicles` (server `initialData` page-1 + client infinite explorer, URL-filter driven), `(app)/vehicles/[vehicleId]` (server detail + `notFound()` on miss).
+- SRS: vehicles surface per live backend contract (RFC scope); allocation invariants (single active allocation per driver/vehicle) enforced by the backend.
+- Gates: typecheck / lint / build green (0 errors; 22 warnings — pre-existing RHF `watch()`/unused-import notes).
 
 ### 3.6 Phase 6 — Customers, Zones & Service Types management (NOT STARTED)
 - `src/features/customers/` — full CRUD UI (list/detail/edit/reactivate), address book, `customers.manage` perm.
@@ -90,12 +100,12 @@
 
 ---
 
-## 4. Current verification snapshot (Phase 4)
+## 4. Current verification snapshot (Phase 5)
 
 - `npm run typecheck` → 0 errors
-- `npm run lint` → 0 errors (27 pre-existing warnings: Docs/src-extracted backend, orders feature unused imports, and RHF `watch()` compiler notes in orders/dispatch/drivers dialogs)
-- `npm run build` → 21 routes generated, `/drivers` + `/drivers/[driverId]` dynamic (SSR), 0 errors
-- Backend `C:\test\Deliverix`: not re-verified this phase; drivers endpoints (`/drivers`, `/drivers/:id`) + `/users` account picker assumed per contract from `src/modules/drivers/**` / `src/modules/users/**`.
+- `npm run lint` → 0 errors (22 pre-existing warnings: order feature unused imports, and RHF `watch()` compiler notes in dispatch/drivers/orders/vehicles dialogs)
+- `npm run build` → 23 routes generated, `/vehicles` + `/vehicles/[vehicleId]` dynamic (SSR), 0 errors
+- Backend `C:\test\Deliverix`: not re-verified this phase; vehicles endpoints (`/vehicles`, `/vehicles/:id`, `/vehicles/:id/allocate`, `/vehicles/:id/deallocate`) per contract from `src/modules/vehicles/**`.
 
 ---
 
@@ -117,4 +127,4 @@
 
 ## 6. How to resume
 
-Continue at **Phase 5 (Vehicles)**. First check backend `src/modules/vehicles/**` (routes/schemas/service) to mirror DTOs before writing `src/features/vehicles/`. Then follow §3.5 checklist and close with the three gates on both repos.
+Continue at **Phase 6 (Customers, Zones & Service Types management)**. First check backend `src/modules/customers/**`, `src/modules/zones/**`, `src/modules/service-types/**` (routes/schemas/service) to mirror DTOs before writing `src/features/customers|zones|service-types/`. Then follow §3.6 checklist and close with the three gates on both repos.
