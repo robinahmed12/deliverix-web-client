@@ -3,7 +3,7 @@
 **Repo:** `C:\test\deliverix-web` (Next.js 16 App Router, React 19, TypeScript strict)
 **Source of truth:** `C:\test\Deliverix\Docs\Delivery_Management_System_Frontend_SRS_v1_Industry_Standard.md`
 **Backend:** `C:\test\Deliverix` (Express 5 + Prisma + PostgreSQL, PORT 4000), contract in `src/modules/**`
-**Last updated:** Phase 5 verified.
+**Last updated:** Phase 6 verified.
 
 ---
 
@@ -30,6 +30,7 @@
 | 3 | Dispatch | done | see §3.3; gates green (typecheck/lint/build) |
 | 4 | Drivers | done | see §3.4; gates green (typecheck/lint/build) |
 | 5 | Vehicles | done | see §3.5; gates green (typecheck/lint/build) |
+| 6 | Customers, Zones & Service Types | done | see §3.6; gates green (typecheck/lint/build) |
 
 ## 3. Remaining phases
 
@@ -83,11 +84,19 @@
 - SRS: vehicles surface per live backend contract (RFC scope); allocation invariants (single active allocation per driver/vehicle) enforced by the backend.
 - Gates: typecheck / lint / build green (0 errors; 22 warnings — pre-existing RHF `watch()`/unused-import notes).
 
-### 3.6 Phase 6 — Customers, Zones & Service Types management (NOT STARTED)
-- `src/features/customers/` — full CRUD UI (list/detail/edit/reactivate), address book, `customers.manage` perm.
-- `src/features/zones/` — zone CRUD + zone-service fee config (`config.manage`).
-- `src/features/service-types/` — CRUD; used in order create flow already.
-- SRS: `CUST-UI-001..014`, `ZONE-UI-001..012`, `SVC-*`.
+### 3.6 Phase 6 — Customers, Zones & Service Types management (done)
+> Mirrors the live backend contracts (`src/modules/customers/**`, `src/modules/zones/**`, `src/modules/service-types/**`). Customers are offset-paginated with a soft-status (`active`/`inactive`); addresses are a `{data}` array envelope (soft-delete via `DELETE`, 204). Zones/service-types list as bare `{data: [...]}` (non-paged); zone `deliveryFee` (Prisma `Decimal`) arrives as a string; writes gated on `zones.manage` (zones) / `config.manage` (service types); reads are authenticated-but-not-authorized on the backend, so the screens gate by nav/perm while the backend remains the boundary.
+- Features:
+  - `src/features/customers/` — `types.ts` (`CustomerDetail` = list DTO; `CustomerAddress`, page/list types, wire `CreateCustomerPayload`/`UpdateCustomerPayload`/`AddressPayload` keeping form (`z.input`) types distinct), `schemas.ts` (list / create / update with email `""|null` clearing; `createAddressSchema` with string coords refined for range), `api.ts` (`listCustomers` offset, `getCustomer`, `createCustomer` idempotent, `updateCustomer` `If-Match`, `listAddresses`/`createAddress`/`updateAddress`/`deleteAddress`), `queries.ts` (`customerKeys`, `useCustomersInfinite`, `useCustomer`, `useCustomerAddresses`, 5 mutations, `useCustomerPermissions` (`customers.view`/`customers.manage`), `useIdempotencyKey`).
+  - `src/features/customers/components/` — `customers-explorer.tsx` (search + status filter, table, load-more), `create-customer-dialog.tsx`, `edit-customer-dialog.tsx` (name/email/phone/status), `address-form-dialog.tsx` (single dialog for create+edit of the address book; `isDefault` checkbox; coords optional), `customer-detail-view.tsx` (info card, Activate/Deactivate via status PATCH, address book with per-address two-step delete confirm).
+  - Pages: `(app)/customers` (server page-1 + client infinite), `(app)/customers/[customerId]` (`notFound()` on miss).
+  - `src/features/zones/` — `types.ts` (`ZoneListItem`/`ZoneDetail`+`areas`, `CreateZonePayload`/`UpdateZonePayload`), `schemas.ts` (create incl. area rows, update w/ fee clearing), `api.ts`/`queries.ts` (`useZones` non-paged with `active`/`search`, `useZone`, `createZone`/`updateZone` mutations — no area-update surface on the backend), `useZonePermissions` (`zones.manage`).
+  - `src/features/zones/components/` — `zones-explorer.tsx` (search + active filter, table w/ fee + priority), `create-zone-dialog.tsx` (optional coverage-area rows editor, fee, currency, priority), `edit-zone-dialog.tsx` (name/active/priority/fee), `zone-detail-view.tsx` (info + read-only areas, Activate/Deactivate toggle).
+  - Pages: `(app)/zones` (server `{data}` fetch), `(app)/zones/[zoneId]` (`notFound()` on miss).
+  - `src/features/service-types/` — `types.ts`/`schemas.ts`/`api.ts`/`queries.ts` (`useServiceTypes` non-paged, `useServiceType`, create/update; writes `config.manage`), list screen `service-types-explorer.tsx` + `create-service-type-dialog.tsx`/`edit-service-type-dialog.tsx` (keyed remount instead of effect-reset), page `(app)/service-types`.
+  - `src/components/shared/nav-config.ts` — added "Service Types" nav item (`config.manage`).
+- SRS: `CUST-UI-001..014`, `ZONE-UI-001..012`, `SVC-*`; admin config screens exercise backend-exposed management (no browser-computed fees — backend `Decimal` is authoritative).
+- Gates: typecheck / lint / build green (0 errors; 22 pre-existing warnings — same RHF `watch()`/unused-import notes as Phase 5).
 
 ### 3.7 Phase 7 — Tracking & External events (NOT STARTED)
 - `src/features/tracking/` — public tracking lookup by tracking number; live map/status timeline; webhook/outbox consumer surface (backend).
@@ -100,12 +109,12 @@
 
 ---
 
-## 4. Current verification snapshot (Phase 5)
+## 4. Current verification snapshot (Phase 6)
 
 - `npm run typecheck` → 0 errors
 - `npm run lint` → 0 errors (22 pre-existing warnings: order feature unused imports, and RHF `watch()` compiler notes in dispatch/drivers/orders/vehicles dialogs)
-- `npm run build` → 23 routes generated, `/vehicles` + `/vehicles/[vehicleId]` dynamic (SSR), 0 errors
-- Backend `C:\test\Deliverix`: not re-verified this phase; vehicles endpoints (`/vehicles`, `/vehicles/:id`, `/vehicles/:id/allocate`, `/vehicles/:id/deallocate`) per contract from `src/modules/vehicles/**`.
+- `npm run build` → 24 routes generated, `/customers`, `/customers/[customerId]`, `/zones`, `/zones/[zoneId]`, `/service-types` dynamic (SSR), 0 errors
+- Backend `C:\test\Deliverix`: not re-verified this phase; contracts per `src/modules/customers|zones|service-types/**` (customers offset-paged + address book, zones/service-types `{data: [...]}`). Two frontend/backend nits to revisit later: PathKit/leaf-style map for coverage areas (currently tabular), and zone-area editing (backend exposes areas only at create).
 
 ---
 
@@ -127,4 +136,4 @@
 
 ## 6. How to resume
 
-Continue at **Phase 6 (Customers, Zones & Service Types management)**. First check backend `src/modules/customers/**`, `src/modules/zones/**`, `src/modules/service-types/**` (routes/schemas/service) to mirror DTOs before writing `src/features/customers|zones|service-types/`. Then follow §3.6 checklist and close with the three gates on both repos.
+Continue at **Phase 7 (Tracking & External events — authenticated timeline only)**. Confirmed scope earlier: `GET /orders/:orderId/tracking` always returns `location: null`, `eta: null`; no public lookup, no live map. Build `src/features/tracking/` as a status/event timeline on the authenticated order detail page (reuse `getOrder`/`getOrderHistory`). Follow backend `src/modules/tracking/**` (+ `delivery/proof/files`, `config-management` for proof policies) before writing code, then close with the three gates on both repos.

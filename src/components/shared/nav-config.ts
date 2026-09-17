@@ -3,6 +3,7 @@ import {
   BarChart3,
   Bell,
   Contact,
+  Layers,
   LayoutDashboard,
   Map,
   Package,
@@ -63,6 +64,12 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/zones",
     icon: Map,
     permissions: ["zones.view", "zones.manage"],
+  },
+  {
+    label: "Service Types",
+    href: "/service-types",
+    icon: Layers,
+    permissions: ["config.manage"],
   },
   {
     label: "Reports",
