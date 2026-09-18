@@ -26,6 +26,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { DemoAccountsPicker } from "./demo-accounts-picker";
+import type { DemoAccount } from "./demo-accounts";
 
 type Step = "credentials" | "mfa";
 
@@ -85,6 +87,13 @@ export function LoginForm({ next }: { next?: string }) {
     } finally {
       setIsPending(false);
     }
+  }
+
+  function handleDemoSelect(account: DemoAccount) {
+    credentialsForm.setValue("email", account.email, { shouldValidate: true });
+    credentialsForm.setValue("password", account.password, {
+      shouldValidate: true,
+    });
   }
 
   return (
@@ -191,13 +200,21 @@ export function LoginForm({ next }: { next?: string }) {
         </Form>
       )}
 
-      <div className="mt-4 text-center text-sm text-muted-foreground">
-        <Link
-          href="/forgot-password"
-          className="underline underline-offset-4 hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        >
-          Forgot password?
-        </Link>
+      <div className="mt-4 space-y-3">
+        {step === "credentials" && (
+          <DemoAccountsPicker
+            onSelect={handleDemoSelect}
+            disabled={isPending}
+          />
+        )}
+        <div className="text-center text-sm text-muted-foreground">
+          <Link
+            href="/forgot-password"
+            className="underline underline-offset-4 hover:text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            Forgot password?
+          </Link>
+        </div>
       </div>
     </>
   );
