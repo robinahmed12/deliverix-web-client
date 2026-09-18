@@ -11,6 +11,7 @@ import {
   ScrollText,
   Settings,
   Truck,
+  UserCog,
   Users,
 } from "lucide-react";
 
@@ -58,6 +59,12 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/customers",
     icon: Contact,
     permissions: ["customers.view", "customers.manage"],
+  },
+  {
+    label: "Users",
+    href: "/settings/users",
+    icon: UserCog,
+    permissions: ["users.view", "users.manage"],
   },
   {
     label: "Zones",

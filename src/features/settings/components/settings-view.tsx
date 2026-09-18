@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { LogOut, ShieldCheck, Wrench } from "lucide-react";
+import { LogOut, ShieldCheck, UserCog, Wrench } from "lucide-react";
 import { logoutAll } from "@/features/auth/api";
 import { useCurrentUser } from "@/features/auth/queries";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,9 @@ export function SettingsView() {
   }
 
   const canManageConfig = user.permissions.includes("config.manage");
+  const canManageUsers =
+    user.permissions.includes("users.view") ||
+    user.permissions.includes("users.manage");
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
@@ -90,6 +93,14 @@ export function SettingsView() {
               <Link href="/settings/config">
                 <Wrench className="mr-2 h-4 w-4" />
                 System configuration
+              </Link>
+            </Button>
+          )}
+          {canManageUsers && (
+            <Button asChild variant="outline" className="justify-start">
+              <Link href="/settings/users">
+                <UserCog className="mr-2 h-4 w-4" />
+                Users &amp; roles
               </Link>
             </Button>
           )}
