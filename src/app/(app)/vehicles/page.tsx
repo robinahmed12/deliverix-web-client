@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { serverFetch } from "@/lib/api/server-client";
-import { PageHeader } from "@/components/shared/page-header";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import {
   VehiclesExplorer,
@@ -55,10 +54,6 @@ export default async function VehiclesPage({
   return (
     <div>
       <Breadcrumbs items={[{ label: "Vehicles" }]} />
-      <PageHeader
-        title="Vehicles"
-        description="Manage the fleet: registration, status, and allocation."
-      />
       <Suspense
         fallback={
           <div className="space-y-4">

@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { serverFetch } from "@/lib/api/server-client";
-import { PageHeader } from "@/components/shared/page-header";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { DispatchBoard } from "@/features/dispatch/components/dispatch-board";
 import type {
@@ -45,10 +44,6 @@ export default async function DispatchPage() {
   return (
     <div>
       <Breadcrumbs items={[{ label: "Dispatch" }]} />
-      <PageHeader
-        title="Dispatch"
-        description="Assign drivers to ready orders and manage the assignment lifecycle."
-      />
       <Suspense
         fallback={
           <div className="space-y-4">

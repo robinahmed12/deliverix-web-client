@@ -7,6 +7,7 @@ import {
   FormProvider,
   useFormContext,
 } from "react-hook-form";
+import { Slot } from "@radix-ui/react-slot";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils/cn";
 
@@ -93,17 +94,22 @@ function FormLabel({
   );
 }
 
-function FormControl({ ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  const { formItemId, formDescriptionId, formMessageId } = useFormField();
+function FormControl({ ...props }: React.ComponentProps<typeof Slot>) {
+  const { error, formItemId, formDescriptionId, formMessageId } = useFormField();
 
+  // Slot forwards these onto the child control itself. Rendering a wrapper
+  // element instead would orphan the label: <label for> can only target
+  // labelable elements (input/select/textarea/button), so an id on a wrapping
+  // <div> leaves the field unlabelled for assistive technology.
   return (
-    <div
+    <Slot
       id={formItemId}
       aria-describedby={
         !formDescriptionId && !formMessageId
           ? undefined
           : `${formDescriptionId} ${formMessageId}`.trim()
       }
+      aria-invalid={error ? true : undefined}
       {...props}
     />
   );

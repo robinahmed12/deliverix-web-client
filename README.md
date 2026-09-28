@@ -256,9 +256,30 @@ Every phase is considered complete only when all three gates pass:
 npm run typecheck   # 0 errors
 npm run lint        # 0 errors
 npm run build       # 0 errors
+npm run test:e2e    # end-to-end (needs the backend running)
 ```
 
-> There is currently **no test runner** in this repository (see [Known deviations](#known-deviations--limitations)); `npm test` does not exist yet.
+### End-to-end tests
+
+Playwright drives the real browser and the real backend. There are no mocks, so
+the backend must be running and seeded first.
+
+```bash
+# from the frontend repo, with the backend already up on its port
+npm run test:e2e:api   # full delivery lifecycle over HTTP
+npm run test:e2e:ui    # browser journeys, at desktop and mobile viewports
+npm run test:e2e       # everything
+```
+
+The suite provisions its own driver account per run (`e2e/provision-driver.ts`),
+because the backend only allows one driver profile per account and a driver gets
+stuck in `OnDelivery` after completing a delivery. That script needs direct
+database access, so it reads the backend's `DATABASE_URL`; point it elsewhere with
+`DELIVERIX_BACKEND_DIR`.
+
+Configuration is by environment variable: `E2E_API_BASE` (default
+`http://localhost:5000`), `E2E_APP_BASE` (default `http://localhost:3000`),
+`E2E_ADMIN_EMAIL` / `E2E_ADMIN_PASSWORD`, and `DELIVERIX_BACKEND_DIR`.
 
 ---
 
@@ -371,7 +392,9 @@ Current navigation permission mapping (`src/components/shared/nav-config.ts`):
 ## Known deviations & limitations
 
 - **Hand-written API types (SRS API-001..004).** The SRS mandates an OpenAPI-generated client; the backend does not yet publish an OpenAPI document, so this repo ships a single, well-typed hand-written client and DTOs (documented in `src/lib/api/types.ts`). Revisit if the backend starts publishing OpenAPI.
-- **No test runner.** The repository has no Vitest/Jest/Playwright setup yet; frontend test requirements (`TEST-FE-*`, including the login→order→dispatch→delivery E2E flow) remain a follow-up.
+- **Coverage is API- and shell-level only.** Playwright covers the full delivery lifecycle over HTTP plus browser journeys through the app shell, but there is no unit-test layer and no component-level coverage of the feature forms, so `TEST-FE-*` beyond that remains a follow-up.
+- **Concurrency is still unenforced on three transition endpoints.** `pickup`, `in-transit`, and `out-for-delivery` do not sit behind `requireVersion` at all, so they accept no `If-Match` and cannot detect a concurrent write. The five delivery actions that do require it (`deliver`, `reschedule`, `return`, `confirm-return`, `confirm-pickup-receipt`) now compare the header against the stored order version inside the advisory lock and return `412` on a stale value, per SRS API-015.
+- **A failed attempt keeps the driver reserved.** `fail` leaves the assignment `Accepted` so `retry` can continue with the same courier, which means a `Failed` order that is never retried or returned holds that driver out of the pool. `retry` and the return paths are the only exits; there is no dispatcher action to release a driver from an abandoned `Failed` order.
 - **Surfaces absent from the backend are intentionally omitted:** there is no tracking/ETA endpoint, no separate `settings` module (only MFA + config management), and no API-token module — so no UI is built for them.
 - **Remaining lint warnings** are non-blocking React-Compiler notes about React Hook Form's `watch()` and a few unused imports in earlier-phase files.
 
@@ -380,10 +403,10 @@ Current navigation permission mapping (`src/components/shared/nav-config.ts`):
 ## Roadmap
 
 1. Re-verify the backend build/lint/typecheck against the current contract assumptions.
-2. Introduce a test runner and implement `TEST-FE-*` (unit + E2E), wired into CI:
-   `typecheck && lint && build && test`.
-3. Adopt OpenAPI-generated types if/when the backend publishes a spec.
-4. Resolve the remaining lint warnings.
+2. Put `pickup`, `in-transit`, and `out-for-delivery` behind `requireVersion`, and add a dispatcher action that releases a driver from an abandoned `Failed` order.
+3. Add a unit-test layer and component coverage for the feature forms, and wire the whole thing into CI: `typecheck && lint && build && test:e2e`.
+4. Adopt OpenAPI-generated types if/when the backend publishes a spec.
+5. Resolve the remaining lint warnings.
 
 ---
 

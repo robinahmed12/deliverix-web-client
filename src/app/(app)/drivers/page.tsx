@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { serverFetch } from "@/lib/api/server-client";
-import { PageHeader } from "@/components/shared/page-header";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import {
   DriversExplorer,
@@ -58,10 +57,6 @@ export default async function DriversPage({
   return (
     <div>
       <Breadcrumbs items={[{ label: "Drivers" }]} />
-      <PageHeader
-        title="Drivers"
-        description="Manage driver records and availability."
-      />
       <Suspense
         fallback={
           <div className="space-y-4">
