@@ -58,11 +58,12 @@ export function useDashboardReport(
 export function useDeliveryReport(
   params: DeliveryReportParams | null,
   initialData?: DeliveryReportResponse,
+  enabled = true,
 ) {
   return useQuery({
     queryKey: reportKeys.deliveries(params ?? { from: "", to: "" }),
     queryFn: () => getDeliveryReport(params as DeliveryReportParams),
-    enabled: params !== null,
+    enabled: params !== null && enabled,
     initialData,
     staleTime: 60_000,
   });
