@@ -55,6 +55,25 @@ export function initials(name: string): string {
     .join("");
 }
 
+export function formatAddress(address: unknown): string {
+  if (!address) return "—";
+  if (typeof address === "string") return address;
+  if (typeof address === "object") {
+    const addr = address as Record<string, unknown>;
+    const parts = [
+      addr.line1,
+      addr.line2,
+      addr.city,
+      addr.region,
+      addr.postalCode,
+      addr.country,
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join(", ") : "—";
+  }
+  return String(address);
+}
+
+
 export function formatBytes(bytes: number | null | undefined): string {
   if (
     bytes === null ||

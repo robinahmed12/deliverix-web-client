@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   BarChart3,
   Bell,
+  Clipboard,
   Contact,
   Layers,
   LayoutDashboard,
@@ -76,6 +77,12 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Radar,
     group: "operations",
     permissions: ["dispatch.view-queue"],
+  },
+  {
+    label: "My Assignments",
+    href: "/drivers/assignments",
+    icon: Clipboard,
+    group: "operations",
   },
   {
     label: "Drivers",
