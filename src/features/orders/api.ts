@@ -122,6 +122,124 @@ export function listOrderProofs(
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Driver delivery execution (deliveries.execute)                            */
+/* -------------------------------------------------------------------------- */
+
+export interface UploadProofFileResult {
+  id: string;
+  key: string;
+  status: string;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploadedAt: string;
+}
+
+/**
+ * Upload a POD photo for an order (POST /api/v1/files/upload).
+ * The backend enforces JPEG/PNG, 5MB max, and links the file to the order.
+ * The returned file id is used as `fileIds` when submitting Photo evidence.
+ */
+export function uploadProofFile(
+  orderId: string,
+  file: File,
+  idempotencyKey?: string,
+): Promise<UploadProofFileResult> {
+  const form = new FormData();
+  form.append("orderId", orderId);
+  form.append("file", file);
+  return apiFetch("/files/upload", {
+    method: "POST",
+    body: form,
+    idempotencyKey,
+  });
+}
+
+export type SubmitProofInput =
+  | { evidenceType: "RecipientName"; evidenceValue: string }
+  | { evidenceType: "Photo"; fileIds: string[] }
+  | { evidenceType: "Signature"; fileIds: string[] }
+  | { evidenceType: "ConfirmationFlag"; confirmationFlag: true }
+  | { evidenceType: "Otp"; evidenceValue: string };
+
+export interface SubmitProofResult {
+  id?: string;
+  evidenceType: string;
+  status: string;
+  submittedAt: string;
+}
+
+/** Submit one piece of delivery evidence (POST /api/v1/orders/:id/proofs). */
+export function submitOrderProof(
+  id: string,
+  data: SubmitProofInput,
+  idempotencyKey?: string,
+): Promise<SubmitProofResult[] | SubmitProofResult> {
+  return apiFetch(`/orders/${id}/proofs`, {
+    method: "POST",
+    body: JSON.stringify(data),
+    idempotencyKey,
+  });
+}
+
+export interface OtpChallengeResult {
+  challengeId: string;
+  expiresAt: string;
+}
+
+/** Request a delivery OTP challenge (POST /api/v1/orders/:id/proofs/otp). */
+export function requestDeliveryOtp(id: string): Promise<OtpChallengeResult> {
+  return apiFetch(`/orders/${id}/proofs/otp`, { method: "POST" });
+}
+
+/**
+ * Mark the order Delivered (POST /api/v1/orders/:id/deliver).
+ * Requires `If-Match` with the current order version (428 without, 412 stale).
+ * The backend validates the required POD evidence for the active attempt.
+ */
+export function completeDelivery(id: string, version: number): Promise<Order> {
+  return apiFetch(`/orders/${id}/deliver`, {
+    method: "POST",
+    body: JSON.stringify({}),
+    version,
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Upload quota management (uploads not attached to evidence)                */
+/* -------------------------------------------------------------------------- */
+
+export interface UnlinkedUpload {
+  id: string;
+  originalName: string | null;
+  mimeType: string;
+  sizeBytes: number;
+  status: string;
+  uploadedAt: string;
+}
+
+/**
+ * Uploads for an order that are NOT attached to submitted evidence.
+ * Orders have a per-order upload ceiling; unused uploads can be discarded
+ * through DELETE /files/:id to free quota (rejected files stop counting).
+ */
+export async function listUnlinkedUploads(
+  orderId: string,
+  opts?: ApiFetchOptions,
+): Promise<UnlinkedUpload[]> {
+  const res = await apiFetch<{ data: UnlinkedUpload[] }>(
+    `/files?orderId=${orderId}`,
+    opts,
+  );
+  return res.data ?? [];
+}
+
+/** Discard one unlinked upload (never a file that evidence references). */
+export function discardProofFile(fileId: string): Promise<{ id: string; status: string }> {
+  return apiFetch(`/files/${fileId}`, { method: "DELETE" });
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Reference pickers (customers / zones / service-types)                     */
 /* -------------------------------------------------------------------------- */
 

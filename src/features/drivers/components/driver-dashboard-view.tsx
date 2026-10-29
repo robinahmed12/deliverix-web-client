@@ -185,43 +185,63 @@ export function DriverDashboardView() {
   }));
 
   // Build 7-day Stacked Area Chart Data
-  const stackedAreaData = React.useMemo(() => {
-    const days: { day: string; dateStr: string; completed: number; accepted: number; offered: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split("T")[0];
-      const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
-      days.push({ day: dayName, dateStr, completed: 0, accepted: 0, offered: 0 });
+ // Build 7-day Stacked Area Chart Data
+const stackedAreaData = (() => {
+  const days: {
+    day: string;
+    dateStr: string;
+    completed: number;
+    accepted: number;
+    offered: number;
+  }[] = [];
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+
+    const dateStr = d.toISOString().split("T")[0];
+    const dayName = d.toLocaleDateString("en-US", {
+      weekday: "short",
+    });
+
+    days.push({
+      day: dayName,
+      dateStr,
+      completed: 0,
+      accepted: 0,
+      offered: 0,
+    });
+  }
+
+  assignments.forEach((a) => {
+    const aDate = (a.offeredAt || "").split("T")[0];
+    const targetDay = days.find((d) => d.dateStr === aDate);
+
+    if (targetDay) {
+      if (a.status === "Completed") targetDay.completed += 1;
+      else if (a.status === "Accepted") targetDay.accepted += 1;
+      else if (a.status === "Offered") targetDay.offered += 1;
     }
+  });
 
-    assignments.forEach((a) => {
-      const aDate = (a.offeredAt || "").split("T")[0];
-      const targetDay = days.find((d) => d.dateStr === aDate);
-      if (targetDay) {
-        if (a.status === "Completed") targetDay.completed += 1;
-        else if (a.status === "Accepted") targetDay.accepted += 1;
-        else if (a.status === "Offered") targetDay.offered += 1;
-      }
-    });
+  // Compute cumulative sum for the stacked visualization effect
+  let runningCompleted = 0;
+  let runningAccepted = 0;
+  let runningOffered = 0;
 
-    // Compute cumulative sum for the stacked visualization effect
-    let runningCompleted = 0;
-    let runningAccepted = 0;
-    let runningOffered = 0;
+  return days.map((item) => {
+    runningCompleted += item.completed;
+    runningAccepted += item.accepted;
+    runningOffered += item.offered;
 
-    return days.map((item) => {
-      runningCompleted += item.completed;
-      runningAccepted += item.accepted;
-      runningOffered += item.offered;
-      return {
-        day: item.day,
-        completed: runningCompleted,
-        accepted: runningAccepted,
-        offered: runningOffered,
-      };
-    });
-  }, [assignments]);
+    return {
+      day: item.day,
+      completed: runningCompleted,
+      accepted: runningAccepted,
+      offered: runningOffered,
+    };
+  });
+})();
 
 
   return (

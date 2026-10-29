@@ -20,12 +20,19 @@ import {
   markOrderReady as apiMarkOrderReady,
   cancelOrder as apiCancelOrder,
   createOrderNote as apiCreateOrderNote,
+  uploadProofFile as apiUploadProofFile,
+  submitOrderProof as apiSubmitOrderProof,
+  requestDeliveryOtp as apiRequestDeliveryOtp,
+  completeDelivery as apiCompleteDelivery,
+  listUnlinkedUploads as apiListUnlinkedUploads,
+  discardProofFile as apiDiscardProofFile,
 } from "./api";
 import type {
   CreateOrderInput,
   UpdateOrderInput,
   CancelOrderInput,
 } from "./schemas";
+import type { SubmitProofInput } from "./api";
 import type {
   Order,
   OrderListParams,
@@ -51,6 +58,7 @@ export const ordersKeys = {
   history: (id: string) => [...ordersKeys.all, "history", id] as const,
   notes: (id: string) => [...ordersKeys.all, "notes", id] as const,
   proofs: (id: string) => [...ordersKeys.all, "proofs", id] as const,
+  unlinkedUploads: (id: string) => [...ordersKeys.all, "unlinked-uploads", id] as const,
 } as const;
 
 const referenceKeys = {
@@ -249,17 +257,82 @@ export function useCreateOrderNoteMutation(id: string) {
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Driver delivery execution (deliveries.execute)                            */
+/* -------------------------------------------------------------------------- */
+
+export function useUploadProofFileMutation(id: string) {
+  return useMutation({
+    mutationFn: ({
+      file,
+      idempotencyKey,
+    }: { file: File; idempotencyKey?: string }) =>
+      apiUploadProofFile(id, file, idempotencyKey),
+    // No cache invalidation on purpose: an upload is not evidence yet. The
+    // caller submits Photo evidence referencing the returned file id.
+  });
+}
+
+export function useSubmitProofMutation(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ data, idempotencyKey }: { data: SubmitProofInput; idempotencyKey?: string }) =>
+      apiSubmitOrderProof(id, data, idempotencyKey),
+    onSuccess() {
+      void qc.invalidateQueries({ queryKey: ordersKeys.proofs(id) });
+    },
+  });
+}
+
+export function useRequestDeliveryOtpMutation(id: string) {
+  return useMutation({
+    mutationFn: () => apiRequestDeliveryOtp(id),
+  });
+}
+
+export function useCompleteDeliveryMutation(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ version }: { version: number }) => apiCompleteDelivery(id, version),
+    onSuccess(order) {
+      qc.setQueryData(ordersKeys.detail(id), order);
+      void qc.invalidateQueries({ queryKey: ordersKeys.proofs(id) });
+      void qc.invalidateQueries({ queryKey: ["driver", "me"] });
+      void qc.invalidateQueries({ queryKey: ["driver", "me", "assignments"] });
+    },
+  });
+}
+
+export function useUnlinkedUploads(id: string) {
+  return useQuery({
+    queryKey: ordersKeys.unlinkedUploads(id),
+    queryFn: () => apiListUnlinkedUploads(id),
+    staleTime: 10_000,
+  });
+}
+
+export function useDiscardUploadMutation(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (fileId: string) => apiDiscardProofFile(fileId),
+    onSuccess() {
+      void qc.invalidateQueries({ queryKey: ordersKeys.unlinkedUploads(id) });
+    },
+  });
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Permission helpers                                                        */
 /* -------------------------------------------------------------------------- */
 
 export function useOrderPermissions() {
   const { data: user } = useCurrentUser();
-  if (!user) return { canCreate: false, canEdit: false, canCancel: false, canAddNotes: false };
+  if (!user) return { canCreate: false, canEdit: false, canCancel: false, canAddNotes: false, canExecuteDelivery: false };
   return {
     canCreate: user.permissions.includes("orders.create"),
     canEdit: user.permissions.includes("orders.edit"),
     canCancel: user.permissions.includes("orders.cancel"),
     canAddNotes: user.permissions.includes("orders.internal-notes"),
+    canExecuteDelivery: user.permissions.includes("deliveries.execute"),
   };
 }
 

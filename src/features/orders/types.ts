@@ -56,6 +56,15 @@ export interface OrderItem {
   heightCm: string | null;
 }
 
+export interface OrderProofPolicy {
+  requiresRecipientName: boolean;
+  requiresPhoto: boolean;
+  requiresSignature: boolean;
+  requiresConfirmation: boolean;
+  requiresOtp: boolean;
+  minPhotos: number;
+}
+
 export interface Order {
   id: string;
   orderNumber: string;
@@ -82,6 +91,8 @@ export interface Order {
   version: number;
   createdAt: string;
   updatedAt: string;
+  /** Effective POD requirements (delivered by GET /orders/:id). Drivers need this to form valid evidence. */
+  proofPolicy?: OrderProofPolicy | null;
 }
 
 export interface OrderStatusHistoryEntry {
@@ -117,6 +128,8 @@ export type ProofStatus = (typeof PROOF_STATUSES)[number];
 
 export const PROOF_FILE_STATUSES = [
   "Pending",
+  "Uploaded",
+  "Scanning",
   "Accepted",
   "Rejected",
   "FailedProcessing",

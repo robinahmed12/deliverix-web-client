@@ -60,7 +60,11 @@ function isAuthEndpoint(path: string): boolean {
 async function executeRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const { idempotencyKey, version, ...restInit } = (init ?? {}) as ApiFetchOptions;
   const headers = new Headers(restInit.headers);
-  if (!headers.has("Content-Type")) {
+  const isMultipart =
+    typeof FormData !== "undefined" && restInit.body instanceof FormData;
+  // Never set a JSON Content-Type on multipart uploads; the browser must
+  // generate the multipart boundary itself.
+  if (!headers.has("Content-Type") && !isMultipart) {
     headers.set("Content-Type", "application/json");
   }
   if (idempotencyKey) headers.set("Idempotency-Key", idempotencyKey);

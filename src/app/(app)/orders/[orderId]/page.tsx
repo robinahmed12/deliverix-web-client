@@ -17,17 +17,26 @@ async function loadOrder(id: string): Promise<{
   notes: OrderNote[];
   proofs: DeliveryProof[];
 }> {
-  const [order, historyRes, notesResult, proofsResult] = await Promise.all([
+  // History, notes, and proof history require `orders.view`, which assigned
+  // drivers do not hold — they are optional views, not the order itself.
+  // Only a failed order read (genuinely unknown ID, or a caller that is neither
+  // staff, the owning customer, nor the assigned driver) may surface the 404.
+  const [orderRes, historyRes, notesRes, proofsRes] = await Promise.allSettled([
     serverFetch<Order>(`/orders/${id}`),
     serverFetch<{ data: OrderStatusHistoryEntry[] }>(`/orders/${id}/history`),
     serverFetch<{ data: OrderNote[] }>(`/orders/${id}/notes?pageSize=100`),
     serverFetch<{ data: DeliveryProof[] }>(`/orders/${id}/proofs?pageSize=100`),
   ]);
+
+  if (orderRes.status === "rejected") {
+    throw orderRes.reason;
+  }
+
   return {
-    order,
-    history: historyRes.data,
-    notes: notesResult.data,
-    proofs: proofsResult.data,
+    order: orderRes.value,
+    history: historyRes.status === "fulfilled" ? historyRes.value.data : [],
+    notes: notesRes.status === "fulfilled" ? notesRes.value.data : [],
+    proofs: proofsRes.status === "fulfilled" ? proofsRes.value.data : [],
   };
 }
 

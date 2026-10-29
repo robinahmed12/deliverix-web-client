@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { OrderStatusBadge } from "../components/order-status-badge";
 import { AddressBlock } from "../components/address-block";
 import { ProofOfDelivery } from "../components/proof-of-delivery";
+import { DriverDeliveryActions } from "../components/driver-delivery-actions";
 import {
   useOrder,
   useOrderHistory,
@@ -22,7 +23,7 @@ import {
   CANCELLABLE_ORDER_STATUSES,
   TERMINAL_ORDER_STATUSES,
 } from "../types";
-import type { Order, OrderStatusHistoryEntry, OrderNote, DeliveryProof } from "../types";
+import type { Order, OrderStatusHistoryEntry, OrderNote, DeliveryProof, OrderProofPolicy } from "../types";
 import {
   Dialog,
   DialogContent,
@@ -48,7 +49,7 @@ export function OrderDetailView({
   initialProofs,
 }: OrderDetailViewProps) {
   const getKey = useIdempotencyKey();
-  const { canEdit, canCancel, canAddNotes } = useOrderPermissions();
+  const { canEdit, canCancel, canAddNotes, canExecuteDelivery } = useOrderPermissions();
 
   const orderQuery = useOrder(initialOrder.id, initialOrder);
   const historyQuery = useOrderHistory(initialOrder.id, initialHistory);
@@ -74,6 +75,21 @@ export function OrderDetailView({
     canCancel && CANCELLABLE_ORDER_STATUSES.has(order.status);
   const isReadyable =
     canEdit && order.status === "Pending";
+
+  // Defaults mirrored on the backend (delivery/delivery.service.ts) for orders
+  // without an active proof policy snapshot (POD-005).
+  const proofPolicy: OrderProofPolicy =
+    order.proofPolicy ?? {
+      requiresRecipientName: true,
+      requiresPhoto: true,
+      requiresSignature: false,
+      requiresConfirmation: false,
+      requiresOtp: false,
+      minPhotos: 1,
+    };
+
+  const canDriverComplete =
+    canExecuteDelivery && order.status === "OutForDelivery";
 
   async function handleReady() {
     try {
@@ -168,7 +184,7 @@ export function OrderDetailView({
           <CardTitle>Items</CardTitle>
         </CardHeader>
         <CardContent>
-          {order.items.length === 0 ? (
+          {order.items!.length === 0 ? (
             <p className="text-sm text-muted-foreground">No items.</p>
           ) : (
             <div className="space-y-2">
@@ -273,6 +289,14 @@ export function OrderDetailView({
       </Card>
 
       <ProofOfDelivery proofs={proofs} />
+
+      {canDriverComplete && (
+        <DriverDeliveryActions
+          order={order}
+          proofs={proofs}
+          policy={proofPolicy}
+        />
+      )}
 
       {canAddNotes && (
         <Card>
