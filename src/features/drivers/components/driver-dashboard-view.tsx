@@ -12,12 +12,14 @@ import {
   confirmOrderPickup,
   startOrderTransit,
   startOrderOutForDelivery,
+  failDeliveryOrder,
   type DriverAssignmentItem,
 } from "../api-me";
 import { toast } from "sonner";
 import { AssignmentCountdown } from "./assignment-countdown";
 import { RejectOfferDialog } from "./reject-offer-dialog";
 import { DeliveryJourneyStepper } from "./delivery-journey-stepper";
+import { FailDeliveryDialog } from "./fail-delivery-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -159,6 +161,22 @@ export function DriverDashboardView() {
     },
     onError: (err) => {
       setActionError(messageFor(err, "Failed to perform delivery action."));
+    },
+  });
+
+  const failMutation = useMutation({
+    mutationFn: ({ orderId, data }: { orderId: string; data: { reasonCode: string; reasonText?: string } }) =>
+      failDeliveryOrder(orderId, data),
+    onSuccess: () => {
+      setActionError(null);
+      toast.info("Delivery issue reported.", {
+        description: "Customer notified of delivery issue via email & in-app alert.",
+      });
+      void queryClient.invalidateQueries({ queryKey: ["driver", "me"] });
+      void queryClient.invalidateQueries({ queryKey: ["driver", "me", "assignments"] });
+    },
+    onError: (err) => {
+      setActionError(messageFor(err, "Failed to report delivery issue."));
     },
   });
 
@@ -551,6 +569,20 @@ const stackedAreaData = (() => {
                   <ArrowRight className="ml-2 size-4" />
                 </Link>
               </Button>
+
+              {["PickedUp", "InTransit", "OutForDelivery"].includes(acceptedAssignment.order.status) && (
+                <FailDeliveryDialog
+                  orderId={acceptedAssignment.order.id}
+                  orderNumber={acceptedAssignment.order.orderNumber}
+                  isPending={failMutation.isPending}
+                  onFail={(data) =>
+                    failMutation.mutateAsync({
+                      orderId: acceptedAssignment.order.id,
+                      data,
+                    })
+                  }
+                />
+              )}
             </div>
           </CardContent>
         </Card>

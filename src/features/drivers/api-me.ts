@@ -142,3 +142,42 @@ export async function startOrderOutForDelivery(orderId: string): Promise<Record<
     body: JSON.stringify({}),
   });
 }
+
+export interface DeliveryFailureReasonItem {
+  id: string;
+  code: string;
+  label: string;
+  requiresText: boolean;
+  active: boolean;
+}
+
+/**
+ * Fetch active delivery failure reasons (GET /api/v1/failure-reasons)
+ */
+export async function getDeliveryFailureReasons(): Promise<DeliveryFailureReasonItem[]> {
+  try {
+    const res = await apiFetch<DeliveryFailureReasonItem[] | { data: DeliveryFailureReasonItem[] }>("/failure-reasons");
+    if (res && typeof res === "object" && "data" in res && Array.isArray(res.data)) {
+      return res.data;
+    }
+    if (Array.isArray(res)) {
+      return res;
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Report delivery exception / failure (POST /api/v1/orders/:orderId/fail)
+ */
+export async function failDeliveryOrder(
+  orderId: string,
+  data: { reasonCode: string; reasonText?: string | null },
+): Promise<Record<string, unknown>> {
+  return apiFetch(`/orders/${orderId}/fail`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}

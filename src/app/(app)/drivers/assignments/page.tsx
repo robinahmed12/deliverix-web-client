@@ -12,6 +12,7 @@ import {
   confirmOrderPickup,
   startOrderTransit,
   startOrderOutForDelivery,
+  failDeliveryOrder,
   setMyAvailability,
   type DriverAssignmentItem,
 } from "@/features/drivers/api-me";
@@ -19,6 +20,7 @@ import { toast } from "sonner";
 import { AssignmentCountdown } from "@/features/drivers/components/assignment-countdown";
 import { RejectOfferDialog } from "@/features/drivers/components/reject-offer-dialog";
 import { DeliveryJourneyStepper } from "@/features/drivers/components/delivery-journey-stepper";
+import { FailDeliveryDialog } from "@/features/drivers/components/fail-delivery-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -137,6 +139,20 @@ export default function AssignmentsPage() {
       void queryClient.invalidateQueries({ queryKey: ["driver", "me"] });
     },
     onError: (err) => setActionError(messageFor(err, "Failed to perform delivery action")),
+  });
+
+  const failMutation = useMutation({
+    mutationFn: ({ orderId, data }: { orderId: string; data: { reasonCode: string; reasonText?: string } }) =>
+      failDeliveryOrder(orderId, data),
+    onSuccess: () => {
+      setActionError(null);
+      toast.info("Delivery issue reported.", {
+        description: "Customer notified of delivery issue via email & in-app alert.",
+      });
+      void queryClient.invalidateQueries({ queryKey: ["driver", "me", "assignments"] });
+      void queryClient.invalidateQueries({ queryKey: ["driver", "me"] });
+    },
+    onError: (err) => setActionError(messageFor(err, "Failed to report delivery issue")),
   });
 
   const isLoading = profileQuery.isLoading || assignmentsQuery.isLoading;
@@ -463,6 +479,20 @@ export default function AssignmentsPage() {
                   <ArrowRight className="size-4" />
                 </Link>
               </Button>
+
+              {["PickedUp", "InTransit", "OutForDelivery"].includes(activeAssignment.order.status) && (
+                <FailDeliveryDialog
+                  orderId={activeAssignment.order.id}
+                  orderNumber={activeAssignment.order.orderNumber}
+                  isPending={failMutation.isPending}
+                  onFail={(data) =>
+                    failMutation.mutateAsync({
+                      orderId: activeAssignment.order.id,
+                      data,
+                    })
+                  }
+                />
+              )}
             </div>
           </CardContent>
         </Card>
