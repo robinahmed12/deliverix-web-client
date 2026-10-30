@@ -14,6 +14,9 @@ import {
   startOrderOutForDelivery,
   type DriverAssignmentItem,
 } from "../api-me";
+import { toast } from "sonner";
+import { AssignmentCountdown } from "./assignment-countdown";
+import { RejectOfferDialog } from "./reject-offer-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -99,6 +102,9 @@ export function DriverDashboardView() {
     mutationFn: acceptAssignment,
     onSuccess: () => {
       setActionError(null);
+      toast.success("Offer accepted!", {
+        description: "Customer has been notified of your assignment via email and in-app alert.",
+      });
       void queryClient.invalidateQueries({ queryKey: ["driver", "me"] });
       void queryClient.invalidateQueries({ queryKey: ["driver", "me", "assignments"] });
     },
@@ -108,9 +114,13 @@ export function DriverDashboardView() {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: rejectAssignment,
+    mutationFn: ({ assignmentId, params }: { assignmentId: string; params?: { reasonCode?: string; reasonText?: string } }) =>
+      rejectAssignment(assignmentId, params),
     onSuccess: () => {
       setActionError(null);
+      toast.info("Offer declined.", {
+        description: "Your availability state has returned to Available.",
+      });
       void queryClient.invalidateQueries({ queryKey: ["driver", "me"] });
       void queryClient.invalidateQueries({ queryKey: ["driver", "me", "assignments"] });
     },
@@ -333,11 +343,13 @@ const stackedAreaData = (() => {
                   New Assignment Offer Available!
                 </CardTitle>
               </div>
-              {offeredAssignment.offerExpiresAt && (
-                <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
-                  Expires: {formatDate(offeredAssignment.offerExpiresAt)}
-                </span>
-              )}
+              <AssignmentCountdown
+                expiresAt={offeredAssignment.offerExpiresAt}
+                onExpire={() => {
+                  void queryClient.invalidateQueries({ queryKey: ["driver", "me"] });
+                  void queryClient.invalidateQueries({ queryKey: ["driver", "me", "assignments"] });
+                }}
+              />
             </div>
             <CardDescription>
               Order <span className="font-semibold">{offeredAssignment.order.orderNumber}</span> has been dispatched to you.
@@ -360,23 +372,26 @@ const stackedAreaData = (() => {
               </div>
             </div>
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-wrap items-center gap-3 pt-2">
               <Button
                 onClick={() => acceptMutation.mutate(offeredAssignment.id)}
                 disabled={acceptMutation.isPending || rejectMutation.isPending}
-                className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white min-h-[44px] px-5"
               >
                 <CheckCircle2 className="size-4" />
                 Accept Delivery
               </Button>
-              <Button
-                onClick={() => rejectMutation.mutate(offeredAssignment.id)}
-                disabled={acceptMutation.isPending || rejectMutation.isPending}
-                variant="outline"
-                className="text-destructive hover:bg-destructive/10"
-              >
-                Decline
-              </Button>
+              <RejectOfferDialog
+                assignmentId={offeredAssignment.id}
+                orderNumber={offeredAssignment.order.orderNumber}
+                isPending={rejectMutation.isPending}
+                onReject={(data) =>
+                  rejectMutation.mutate({
+                    assignmentId: offeredAssignment.id,
+                    params: data,
+                  })
+                }
+              />
             </div>
           </CardContent>
         </Card>

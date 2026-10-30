@@ -15,6 +15,9 @@ import {
   setMyAvailability,
   type DriverAssignmentItem,
 } from "@/features/drivers/api-me";
+import { toast } from "sonner";
+import { AssignmentCountdown } from "@/features/drivers/components/assignment-countdown";
+import { RejectOfferDialog } from "@/features/drivers/components/reject-offer-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -83,6 +86,9 @@ export default function AssignmentsPage() {
     mutationFn: acceptAssignment,
     onSuccess: () => {
       setActionError(null);
+      toast.success("Offer accepted!", {
+        description: "Customer has been notified of your assignment via email and in-app alert.",
+      });
       void queryClient.invalidateQueries({ queryKey: ["driver", "me", "assignments"] });
       void queryClient.invalidateQueries({ queryKey: ["driver", "me"] });
     },
@@ -90,9 +96,13 @@ export default function AssignmentsPage() {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: rejectAssignment,
+    mutationFn: ({ assignmentId, params }: { assignmentId: string; params?: { reasonCode?: string; reasonText?: string } }) =>
+      rejectAssignment(assignmentId, params),
     onSuccess: () => {
       setActionError(null);
+      toast.info("Offer declined.", {
+        description: "Your availability state has returned to Available.",
+      });
       void queryClient.invalidateQueries({ queryKey: ["driver", "me", "assignments"] });
       void queryClient.invalidateQueries({ queryKey: ["driver", "me"] });
     },
@@ -244,11 +254,13 @@ export default function AssignmentsPage() {
                   New Assignment Offer
                 </CardTitle>
               </div>
-              {pendingOffer.offerExpiresAt && (
-                <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">
-                  Expires: {formatDate(pendingOffer.offerExpiresAt)}
-                </span>
-              )}
+              <AssignmentCountdown
+                expiresAt={pendingOffer.offerExpiresAt}
+                onExpire={() => {
+                  void queryClient.invalidateQueries({ queryKey: ["driver", "me", "assignments"] });
+                  void queryClient.invalidateQueries({ queryKey: ["driver", "me"] });
+                }}
+              />
             </div>
             <CardDescription>
               Order <span className="font-semibold text-foreground">{pendingOffer.order.orderNumber}</span> has been offered to you.
@@ -271,24 +283,26 @@ export default function AssignmentsPage() {
               </div>
             </div>
 
-            <div className="flex gap-3 pt-1">
+            <div className="flex flex-wrap items-center gap-3 pt-1">
               <Button
                 onClick={() => acceptMutation.mutate(pendingOffer.id)}
                 disabled={acceptMutation.isPending || rejectMutation.isPending}
-                className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white min-h-[44px] px-5"
               >
                 <Check className="size-4" />
                 Accept Delivery
               </Button>
-              <Button
-                onClick={() => rejectMutation.mutate(pendingOffer.id)}
-                disabled={acceptMutation.isPending || rejectMutation.isPending}
-                variant="outline"
-                className="gap-2 text-destructive hover:bg-destructive/10"
-              >
-                <X className="size-4" />
-                Decline Offer
-              </Button>
+              <RejectOfferDialog
+                assignmentId={pendingOffer.id}
+                orderNumber={pendingOffer.order.orderNumber}
+                isPending={rejectMutation.isPending}
+                onReject={(data) =>
+                  rejectMutation.mutate({
+                    assignmentId: pendingOffer.id,
+                    params: data,
+                  })
+                }
+              />
             </div>
           </CardContent>
         </Card>

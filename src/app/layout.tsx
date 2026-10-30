@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Raleway } from "next/font/google";
 import "./globals.css";
 import { QueryProviders } from "@/lib/query/query-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
 const raleway = Raleway({subsets:['latin'],variable:'--font-sans'});
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col">
         <QueryProviders>
           <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
+          <Toaster richColors position="top-right" />
         </QueryProviders>
       </body>
     </html>

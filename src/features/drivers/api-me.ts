@@ -103,9 +103,13 @@ export async function acceptAssignment(assignmentId: string): Promise<Record<str
 /**
  * Reject an offered assignment (POST /api/v1/assignments/:id/reject)
  */
-export async function rejectAssignment(assignmentId: string): Promise<Record<string, unknown>> {
+export async function rejectAssignment(
+  assignmentId: string,
+  params?: { reasonCode?: string; reasonText?: string | null },
+): Promise<Record<string, unknown>> {
   return apiFetch(`/assignments/${assignmentId}/reject`, {
     method: "POST",
+    body: params ? JSON.stringify(params) : undefined,
   });
 }
 
