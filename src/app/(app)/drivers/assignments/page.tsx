@@ -18,6 +18,7 @@ import {
 import { toast } from "sonner";
 import { AssignmentCountdown } from "@/features/drivers/components/assignment-countdown";
 import { RejectOfferDialog } from "@/features/drivers/components/reject-offer-dialog";
+import { DeliveryJourneyStepper } from "@/features/drivers/components/delivery-journey-stepper";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -49,6 +50,8 @@ import {
   User,
   Phone,
   FileCheck,
+  ExternalLink,
+  Loader2,
 } from "lucide-react";
 
 export default function AssignmentsPage() {
@@ -115,8 +118,21 @@ export default function AssignmentsPage() {
       if (step === "transit") return startOrderTransit(orderId);
       if (step === "out") return startOrderOutForDelivery(orderId);
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       setActionError(null);
+      if (variables.step === "pickup") {
+        toast.success("Package picked up!", {
+          description: "Customer notified package is in transit via email & in-app alert.",
+        });
+      } else if (variables.step === "transit") {
+        toast.success("In-transit started!", {
+          description: "Customer notified package is en route via email & in-app alert.",
+        });
+      } else if (variables.step === "out") {
+        toast.success("Out for delivery!", {
+          description: "Customer proximity alert sent via email & in-app alert.",
+        });
+      }
       void queryClient.invalidateQueries({ queryKey: ["driver", "me", "assignments"] });
       void queryClient.invalidateQueries({ queryKey: ["driver", "me"] });
     },
@@ -326,18 +342,67 @@ export default function AssignmentsPage() {
           </CardHeader>
 
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-              <div className="rounded-lg bg-background p-3 border">
-                <span className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1">
-                  <MapPin className="size-3.5 text-blue-500" /> Pickup Location
-                </span>
-                <p className="mt-1 font-medium">{formatAddress(activeAssignment.order.pickupAddress)}</p>
+            <DeliveryJourneyStepper status={activeAssignment.order.status} className="my-1" />
+
+            {activeAssignment.order.customerPhone && (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background p-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <Phone className="size-4 text-emerald-600 shrink-0" />
+                  <div>
+                    <p className="font-medium text-xs text-muted-foreground uppercase">Customer Contact</p>
+                    <p className="font-semibold text-foreground">
+                      {activeAssignment.order.customerName ? `${activeAssignment.order.customerName} • ` : ""}
+                      {activeAssignment.order.customerPhone}
+                    </p>
+                  </div>
+                </div>
+                <Button asChild size="sm" variant="outline" className="min-h-[44px] gap-1.5 border-emerald-500/40 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30">
+                  <a href={`tel:${activeAssignment.order.customerPhone}`}>
+                    <Phone className="size-3.5" />
+                    Call Customer
+                  </a>
+                </Button>
               </div>
-              <div className="rounded-lg bg-background p-3 border">
-                <span className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1">
-                  <MapPin className="size-3.5 text-emerald-500" /> Delivery Address
-                </span>
-                <p className="mt-1 font-medium">{formatAddress(activeAssignment.order.deliveryAddress)}</p>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              <div className="rounded-lg bg-background p-3 border flex flex-col justify-between">
+                <div>
+                  <span className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1">
+                    <MapPin className="size-3.5 text-blue-500" /> Pickup Location
+                  </span>
+                  <p className="mt-1 font-medium">{formatAddress(activeAssignment.order.pickupAddress)}</p>
+                </div>
+                <Button asChild variant="ghost" size="sm" className="mt-2 text-xs text-blue-600 hover:text-blue-700 h-8 px-2 w-fit gap-1">
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(formatAddress(activeAssignment.order.pickupAddress))}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Navigation className="size-3" />
+                    Navigate to Pickup
+                    <ExternalLink className="size-3 ml-0.5" />
+                  </a>
+                </Button>
+              </div>
+              <div className="rounded-lg bg-background p-3 border flex flex-col justify-between">
+                <div>
+                  <span className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1">
+                    <MapPin className="size-3.5 text-emerald-500" /> Delivery Address
+                  </span>
+                  <p className="mt-1 font-medium">{formatAddress(activeAssignment.order.deliveryAddress)}</p>
+                </div>
+                <Button asChild variant="ghost" size="sm" className="mt-2 text-xs text-emerald-600 hover:text-emerald-700 h-8 px-2 w-fit gap-1">
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(formatAddress(activeAssignment.order.deliveryAddress))}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Navigation className="size-3" />
+                    Navigate to Destination
+                    <ExternalLink className="size-3 ml-0.5" />
+                  </a>
+                </Button>
               </div>
             </div>
 
@@ -352,9 +417,9 @@ export default function AssignmentsPage() {
                     })
                   }
                   disabled={transitionMutation.isPending}
-                  className="gap-2 bg-primary text-primary-foreground"
+                  className="gap-2 bg-primary text-primary-foreground min-h-[44px] px-6 text-sm font-semibold"
                 >
-                  <Package className="size-4" />
+                  {transitionMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Package className="size-4" />}
                   1. Confirm Package Pickup
                 </Button>
               )}
@@ -368,9 +433,9 @@ export default function AssignmentsPage() {
                     })
                   }
                   disabled={transitionMutation.isPending}
-                  className="gap-2 bg-primary text-primary-foreground"
+                  className="gap-2 bg-primary text-primary-foreground min-h-[44px] px-6 text-sm font-semibold"
                 >
-                  <Navigation className="size-4" />
+                  {transitionMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Navigation className="size-4" />}
                   2. Start In-Transit
                 </Button>
               )}
@@ -384,14 +449,14 @@ export default function AssignmentsPage() {
                     })
                   }
                   disabled={transitionMutation.isPending}
-                  className="gap-2 bg-primary text-primary-foreground"
+                  className="gap-2 bg-primary text-primary-foreground min-h-[44px] px-6 text-sm font-semibold"
                 >
-                  <Truck className="size-4" />
+                  {transitionMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Truck className="size-4" />}
                   3. Mark Out for Delivery
                 </Button>
               )}
 
-              <Button asChild variant="outline" className="gap-2">
+              <Button asChild variant="outline" className="gap-2 min-h-[44px]">
                 <Link href={`/orders/${activeAssignment.order.id}`}>
                   <FileCheck className="size-4 text-emerald-600" />
                   Complete Delivery & Submit POD

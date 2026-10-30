@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { AssignmentCountdown } from "./assignment-countdown";
 import { RejectOfferDialog } from "./reject-offer-dialog";
+import { DeliveryJourneyStepper } from "./delivery-journey-stepper";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -41,6 +42,9 @@ import {
   Power,
   RotateCw,
   Navigation,
+  Phone,
+  ExternalLink,
+  Loader2,
 } from "lucide-react";
 import { formatDate, formatAddress } from "@/lib/utils/formatters";
 import { messageFor } from "@/lib/api/errors";
@@ -135,8 +139,21 @@ export function DriverDashboardView() {
       if (next === "transit") return startOrderTransit(orderId);
       if (next === "out-for-delivery") return startOrderOutForDelivery(orderId);
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       setActionError(null);
+      if (variables.next === "pickup") {
+        toast.success("Package picked up!", {
+          description: "Customer notified package is in transit via email & in-app alert.",
+        });
+      } else if (variables.next === "transit") {
+        toast.success("In-transit started!", {
+          description: "Customer notified package is en route via email & in-app alert.",
+        });
+      } else if (variables.next === "out-for-delivery") {
+        toast.success("Out for delivery!", {
+          description: "Customer proximity alert sent via email & in-app alert.",
+        });
+      }
       void queryClient.invalidateQueries({ queryKey: ["driver", "me"] });
       void queryClient.invalidateQueries({ queryKey: ["driver", "me", "assignments"] });
     },
@@ -414,18 +431,67 @@ const stackedAreaData = (() => {
           </CardHeader>
 
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-              <div className="rounded-lg bg-background p-3 border">
-                <span className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1">
-                  <MapPin className="size-3.5 text-blue-500" /> Pickup Location
-                </span>
-                <p className="mt-1 font-medium">{formatAddress(acceptedAssignment.order.pickupAddress)}</p>
+            <DeliveryJourneyStepper status={acceptedAssignment.order.status} className="my-1" />
+
+            {acceptedAssignment.order.customerPhone && (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background p-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <Phone className="size-4 text-emerald-600 shrink-0" />
+                  <div>
+                    <p className="font-medium text-xs text-muted-foreground uppercase">Customer Contact</p>
+                    <p className="font-semibold text-foreground">
+                      {acceptedAssignment.order.customerName ? `${acceptedAssignment.order.customerName} • ` : ""}
+                      {acceptedAssignment.order.customerPhone}
+                    </p>
+                  </div>
+                </div>
+                <Button asChild size="sm" variant="outline" className="min-h-[44px] gap-1.5 border-emerald-500/40 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30">
+                  <a href={`tel:${acceptedAssignment.order.customerPhone}`}>
+                    <Phone className="size-3.5" />
+                    Call Customer
+                  </a>
+                </Button>
               </div>
-              <div className="rounded-lg bg-background p-3 border">
-                <span className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1">
-                  <MapPin className="size-3.5 text-emerald-500" /> Delivery Destination
-                </span>
-                <p className="mt-1 font-medium">{formatAddress(acceptedAssignment.order.deliveryAddress)}</p>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              <div className="rounded-lg bg-background p-3 border flex flex-col justify-between">
+                <div>
+                  <span className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1">
+                    <MapPin className="size-3.5 text-blue-500" /> Pickup Location
+                  </span>
+                  <p className="mt-1 font-medium">{formatAddress(acceptedAssignment.order.pickupAddress)}</p>
+                </div>
+                <Button asChild variant="ghost" size="sm" className="mt-2 text-xs text-blue-600 hover:text-blue-700 h-8 px-2 w-fit gap-1">
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(formatAddress(acceptedAssignment.order.pickupAddress))}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Navigation className="size-3" />
+                    Navigate to Pickup
+                    <ExternalLink className="size-3 ml-0.5" />
+                  </a>
+                </Button>
+              </div>
+              <div className="rounded-lg bg-background p-3 border flex flex-col justify-between">
+                <div>
+                  <span className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1">
+                    <MapPin className="size-3.5 text-emerald-500" /> Delivery Destination
+                  </span>
+                  <p className="mt-1 font-medium">{formatAddress(acceptedAssignment.order.deliveryAddress)}</p>
+                </div>
+                <Button asChild variant="ghost" size="sm" className="mt-2 text-xs text-emerald-600 hover:text-emerald-700 h-8 px-2 w-fit gap-1">
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(formatAddress(acceptedAssignment.order.deliveryAddress))}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Navigation className="size-3" />
+                    Navigate to Destination
+                    <ExternalLink className="size-3 ml-0.5" />
+                  </a>
+                </Button>
               </div>
             </div>
 
@@ -440,9 +506,9 @@ const stackedAreaData = (() => {
                     })
                   }
                   disabled={transitionMutation.isPending}
-                  className="gap-2"
+                  className="gap-2 min-h-[44px] px-6 text-sm font-semibold"
                 >
-                  <Package className="size-4" />
+                  {transitionMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Package className="size-4" />}
                   Confirm Package Pickup
                 </Button>
               )}
@@ -456,9 +522,9 @@ const stackedAreaData = (() => {
                     })
                   }
                   disabled={transitionMutation.isPending}
-                  className="gap-2"
+                  className="gap-2 min-h-[44px] px-6 text-sm font-semibold"
                 >
-                  <Navigation className="size-4" />
+                  {transitionMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Navigation className="size-4" />}
                   Start In-Transit
                 </Button>
               )}
@@ -472,14 +538,14 @@ const stackedAreaData = (() => {
                     })
                   }
                   disabled={transitionMutation.isPending}
-                  className="gap-2"
+                  className="gap-2 min-h-[44px] px-6 text-sm font-semibold"
                 >
-                  <Truck className="size-4" />
+                  {transitionMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Truck className="size-4" />}
                   Mark Out for Delivery
                 </Button>
               )}
 
-              <Button asChild variant="outline">
+              <Button asChild variant="outline" className="min-h-[44px]">
                 <Link href={`/orders/${acceptedAssignment.order.id}`}>
                   View Order Details & POD
                   <ArrowRight className="ml-2 size-4" />
