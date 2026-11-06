@@ -15,6 +15,7 @@ import {
   ScrollText,
   Settings,
   Truck,
+  User,
   UserCog,
   Users,
 } from "lucide-react";
@@ -36,6 +37,8 @@ export interface NavItem {
   group: NavGroupKey;
   /** When provided, the item is shown only if the user holds at least one permission. */
   permissions?: string[];
+  /** When provided, the item is shown if the user holds at least one role. */
+  roles?: string[];
 }
 
 const GROUP_ORDER: NavGroupKey[] = [
@@ -60,7 +63,7 @@ export const GROUP_LABELS: Record<NavGroupKey, string> = {
 
 /**
  * Primary navigation groups (NAV-003), filtered by the authenticated user's
- * effective permissions (RBAC-006). Filtering is presentation-only — the
+ * effective permissions (RBAC-006) and roles. Filtering is presentation-only — the
  * backend remains the authorization boundary (RBAC-001/002).
  */
 export const NAV_ITEMS: NavItem[] = [
@@ -76,6 +79,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: PackageCheck,
     group: "portal",
     permissions: ["customers.me.view"],
+    roles: ["customer"],
   },
   {
     label: "My Orders",
@@ -83,13 +87,23 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Package,
     group: "portal",
     permissions: ["customers.me.view"],
+    roles: ["customer"],
   },
   {
     label: "Saved Addresses",
     href: "/portal/addresses",
     icon: MapPin,
     group: "portal",
-    permissions: ["customers.me.addresses"],
+    permissions: ["customers.me.addresses", "customers.me.view"],
+    roles: ["customer"],
+  },
+  {
+    label: "Customer Profile",
+    href: "/portal/profile",
+    icon: User,
+    group: "portal",
+    permissions: ["customers.me.view"],
+    roles: ["customer"],
   },
   {
     label: "AI Support & FAQ",
@@ -97,6 +111,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: HelpCircle,
     group: "portal",
     permissions: ["customers.me.view"],
+    roles: ["customer"],
   },
   {
     label: "Orders",
@@ -117,6 +132,7 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/drivers/assignments",
     icon: Clipboard,
     group: "operations",
+    roles: ["driver", "dispatcher", "admin"],
   },
   {
     label: "Drivers",
@@ -189,11 +205,51 @@ export const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-/** Items visible for a user holding the given permission codes. */
-export function screenNavItems(permissions: string[]): NavItem[] {
+/** Items visible for a user holding the given permission codes and roles. */
+export function screenNavItems(
+  permissions: string[] = [],
+  roles: string[] = [],
+): NavItem[] {
+  const isCustomer = roles.includes("customer");
+
   return NAV_ITEMS.filter((item) => {
-    if (!item.permissions || item.permissions.length === 0) return true;
-    return item.permissions.some((permission) => permissions.includes(permission));
+    // 1. Customer portal items MUST ONLY be shown if a customer is logged in.
+    // Non-customers (admin, dispatcher, driver, support) should NOT see them.
+    if (item.group === "portal") {
+      return isCustomer;
+    }
+
+    // 2. If user is a customer, omit staff-internal tools (operations, fleet, network, insights, user management)
+    if (isCustomer) {
+      if (
+        item.group === "operations" ||
+        item.group === "fleet" ||
+        item.group === "network" ||
+        item.group === "insights" ||
+        item.href === "/settings/users"
+      ) {
+        return false;
+      }
+    }
+
+    // 3. Role restriction check (e.g. driver assignments)
+    if (item.roles && item.roles.length > 0) {
+      const hasRole = item.roles.some((r) => roles.includes(r));
+      if (!hasRole && (!item.permissions || item.permissions.length === 0)) return false;
+      if (hasRole) return true;
+    }
+
+    // 4. Permission check
+    if (item.permissions && item.permissions.length > 0) {
+      return item.permissions.some((permission) => permissions.includes(permission));
+    }
+
+    // Fallback for items with role restriction when user doesn't hold the role
+    if (item.roles && item.roles.length > 0) {
+      return false;
+    }
+
+    return true;
   });
 }
 
@@ -201,8 +257,11 @@ export function screenNavItems(permissions: string[]): NavItem[] {
  * Sidebar/tablet/mobile nav sections in display order. Groups that become
  * empty after permission filtering are omitted entirely.
  */
-export function screenNavGroups(permissions: string[]): NavSection[] {
-  const visible = screenNavItems(permissions);
+export function screenNavGroups(
+  permissions: string[] = [],
+  roles: string[] = [],
+): NavSection[] {
+  const visible = screenNavItems(permissions, roles);
   return GROUP_ORDER.map((key) => ({
     key,
     label: GROUP_LABELS[key],

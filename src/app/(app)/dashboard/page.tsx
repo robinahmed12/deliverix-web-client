@@ -1,6 +1,7 @@
 import { serverFetch } from "@/lib/api/server-client";
 import { DashboardView } from "@/features/reports/components/dashboard-view";
 import { DriverDashboardView } from "@/features/drivers/components/driver-dashboard-view";
+import { PortalDashboardView } from "@/features/customers/components/portal-dashboard-view";
 import type { DashboardReport } from "@/features/reports/types";
 import type { CurrentUser } from "@/lib/api/types";
 
@@ -17,8 +18,18 @@ export default async function DashboardPage() {
     return <DriverDashboardView />;
   }
 
-  // Otherwise, load administrative/dispatch reports dashboard
+  // If authenticated user is a Customer, render the Customer Portal Dashboard
+  if (
+    currentUser?.roles?.includes("customer") ||
+    (!currentUser?.roles?.includes("admin") &&
+      !currentUser?.roles?.includes("dispatcher") &&
+      !currentUser?.roles?.includes("support") &&
+      currentUser?.permissions?.includes("customers.me.view"))
+  ) {
+    return <PortalDashboardView />;
+  }
 
+  // Otherwise, load administrative/dispatch reports dashboard
   let initialData: DashboardReport | undefined;
   let hasReportAccess = false;
   try {

@@ -96,7 +96,7 @@ export function CustomerOrdersView() {
   };
 
   return (
-    <div className="space-y-6 p-6 md:p-8 max-w-6xl mx-auto">
+    <div className="space-y-6 w-full">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">My Deliveries</h1>

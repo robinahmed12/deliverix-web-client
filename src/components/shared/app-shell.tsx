@@ -84,9 +84,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { data: user } = useCurrentUser();
   const [navOpen, setNavOpen] = React.useState(false);
 
-  const sections = user ? screenNavGroups(user.permissions) : [];
+  const sections = user ? screenNavGroups(user.permissions, user.roles) : [];
   // Flat view of the same permission-filtered items, for the top-bar title.
-  const flatItems = user ? screenNavItems(user.permissions) : [];
+  const flatItems = user ? screenNavItems(user.permissions, user.roles) : [];
   const pageTitle = pageTitleForPath(flatItems, pathname);
 
   return (

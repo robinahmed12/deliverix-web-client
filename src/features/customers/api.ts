@@ -126,8 +126,13 @@ export function linkCustomerAccount(data: LinkAccountPayload): Promise<CustomerL
   });
 }
 
-export function listMyAddresses(opts?: ApiFetchOptions): Promise<CustomerAddress[]> {
-  return apiFetch("/customers/me/addresses", opts);
+export async function listMyAddresses(opts?: ApiFetchOptions): Promise<CustomerAddress[]> {
+  const res = await apiFetch<DataResponse<CustomerAddress[]> | CustomerAddress[]>("/customers/me/addresses", opts);
+  if (Array.isArray(res)) return res;
+  if (res && typeof res === "object" && "data" in res && Array.isArray((res as DataResponse<CustomerAddress[]>).data)) {
+    return (res as DataResponse<CustomerAddress[]>).data;
+  }
+  return [];
 }
 
 export function createMyAddress(

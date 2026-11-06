@@ -93,7 +93,7 @@ export function CustomerOrderTracker({ orderId }: CustomerOrderTrackerProps) {
 
   if (isOrderLoading) {
     return (
-      <div className="space-y-6 p-6 max-w-4xl mx-auto">
+      <div className="space-y-6 w-full">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-44 w-full" />
         <Skeleton className="h-64 w-full" />
@@ -103,7 +103,7 @@ export function CustomerOrderTracker({ orderId }: CustomerOrderTrackerProps) {
 
   if (!order) {
     return (
-      <div className="p-12 text-center">
+      <div className="p-12 text-center w-full">
         <AlertTriangle className="size-12 text-destructive mx-auto mb-3" />
         <h2 className="text-xl font-bold">Order Not Found</h2>
         <p className="text-muted-foreground mt-1">This order does not exist or you do not have permission to view it.</p>
@@ -137,7 +137,7 @@ export function CustomerOrderTracker({ orderId }: CustomerOrderTrackerProps) {
   };
 
   return (
-    <div className="space-y-8 p-6 md:p-8 max-w-4xl mx-auto">
+    <div className="space-y-8 w-full">
       {/* Back button & Title */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">

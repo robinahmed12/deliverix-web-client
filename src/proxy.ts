@@ -42,6 +42,9 @@ const GUARD_RULES: Array<{ prefix: string; permissions: string[] }> = [
   { prefix: "/drivers/assignments", permissions: [] },
   { prefix: "/drivers", permissions: ["drivers.view", "drivers.manage", "dispatch.view-queue"] },
 
+  // Customer portal self-service pages
+  { prefix: "/portal", permissions: ["customers.me.view", "customers.me.addresses"] },
+
   { prefix: "/dashboard", permissions: [] },
   { prefix: "/dispatch", permissions: ["dispatch.view-queue"] },
   { prefix: "/vehicles", permissions: ["vehicles.view", "vehicles.manage", "drivers.view"] },
@@ -132,7 +135,19 @@ export async function proxy(request: NextRequest) {
   }
 
   // Authenticated but none of the page's permissions → their universal home.
-  const allowed = required.length === 0 || claims.permissions.some((p) => required.includes(p));
+  const isCustomer = claims.roles.includes("customer");
+  const isPortalPath = request.nextUrl.pathname.startsWith("/portal");
+
+  // If user is a customer trying to access internal operational routes (like /orders, /dispatch, /drivers, /reports, etc.)
+  if (isCustomer && !isPortalPath && request.nextUrl.pathname !== "/dashboard" && !request.nextUrl.pathname.startsWith("/settings")) {
+    return finalize(NextResponse.redirect(new URL("/dashboard", request.url)), rotatedSetCookies, sessionInvalidated);
+  }
+
+  const allowed =
+    required.length === 0 ||
+    claims.permissions.some((p) => required.includes(p)) ||
+    (isCustomer && isPortalPath);
+
   if (!allowed) {
     return finalize(NextResponse.redirect(new URL("/dashboard", request.url)), rotatedSetCookies, sessionInvalidated);
   }

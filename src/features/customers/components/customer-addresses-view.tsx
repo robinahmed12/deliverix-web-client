@@ -27,7 +27,16 @@ import { CustomerSupportChatWidget } from "@/features/support-rag/components/cus
 import type { CustomerAddress, AddressPayload } from "../types";
 
 export function CustomerAddressesView() {
-  const { data: addresses, isLoading } = useMyAddressesQuery();
+  const { data: addressesData, isLoading } = useMyAddressesQuery();
+  const addresses: CustomerAddress[] = React.useMemo(() => {
+    if (Array.isArray(addressesData)) return addressesData;
+    if (addressesData && typeof addressesData === "object" && "data" in (addressesData as Record<string, unknown>)) {
+      const d = (addressesData as { data: unknown }).data;
+      if (Array.isArray(d)) return d as CustomerAddress[];
+    }
+    return [];
+  }, [addressesData]);
+
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editingAddress, setEditingAddress] = React.useState<CustomerAddress | null>(null);
 
@@ -105,7 +114,7 @@ export function CustomerAddressesView() {
   };
 
   return (
-    <div className="space-y-6 p-6 md:p-8 max-w-5xl mx-auto">
+    <div className="space-y-6 w-full">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Saved Addresses</h1>

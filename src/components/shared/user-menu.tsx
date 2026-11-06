@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { LogOut, Settings, ShieldCheck } from "lucide-react";
+import { LogOut, Settings, ShieldCheck, User } from "lucide-react";
 import { logoutAll } from "@/features/auth/api";
 import { useCurrentUser } from "@/features/auth/queries";
 import { initials } from "@/lib/utils/formatters";
@@ -73,6 +73,14 @@ export function UserMenu() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {user.roles?.includes("customer") && (
+          <DropdownMenuItem asChild>
+            <Link href="/portal/profile">
+              <User />
+              <span>Customer Profile</span>
+            </Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem asChild>
           <Link href="/settings/security">
             <ShieldCheck />

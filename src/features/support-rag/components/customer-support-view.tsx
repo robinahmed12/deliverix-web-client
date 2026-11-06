@@ -17,13 +17,22 @@ export function CustomerSupportView() {
   const [activeCategory, setActiveCategory] = React.useState<string>("all");
   const [search, setSearch] = React.useState<string>("");
 
-  const { data: faqs, isLoading } = useSupportFAQsQuery({
+  const { data: faqsData, isLoading } = useSupportFAQsQuery({
     category: activeCategory !== "all" ? activeCategory : undefined,
     search: search ? search : undefined,
   });
 
+  const faqs = React.useMemo(() => {
+    if (Array.isArray(faqsData)) return faqsData;
+    if (faqsData && typeof faqsData === "object" && "data" in (faqsData as Record<string, unknown>)) {
+      const d = (faqsData as { data: unknown }).data;
+      if (Array.isArray(d)) return d;
+    }
+    return [];
+  }, [faqsData]);
+
   return (
-    <div className="space-y-8 p-6 md:p-8 max-w-5xl mx-auto">
+    <div className="space-y-8 w-full">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Support & Knowledge Center</h1>
         <p className="text-muted-foreground mt-1">
