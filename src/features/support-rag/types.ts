@@ -15,6 +15,7 @@ export interface RetrievedPolicy {
   id: string;
   title: string;
   category: string;
+  similarity?: number;
 }
 
 export interface CustomerContextSummary {

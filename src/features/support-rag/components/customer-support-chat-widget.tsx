@@ -171,12 +171,13 @@ export function CustomerSupportChatWidget({ currentOrderId }: CustomerSupportCha
               {lastResponse?.retrievedPolicies && lastResponse.retrievedPolicies.length > 0 && (
                 <div className="pt-2">
                   <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider block mb-1">
-                    Verified Policies
+                    Verified Policies (pgVector Grounded)
                   </span>
                   <div className="flex flex-wrap gap-1">
                     {lastResponse.retrievedPolicies.map((p) => (
                       <Badge key={p.id} variant="outline" className="text-[10px] py-0">
                         {p.title}
+                        {p.similarity ? ` (${Math.round(p.similarity * 100)}% match)` : ""}
                       </Badge>
                     ))}
                   </div>

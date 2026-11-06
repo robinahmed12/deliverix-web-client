@@ -118,7 +118,7 @@ export function CustomerSupportView() {
             <div>
               <h4 className="font-semibold text-foreground">Need Direct Human Assistance?</h4>
               <p className="text-sm text-muted-foreground">
-                Our support team is available 7 days a week at support@deliverix.local
+                Our support team is available 7 days a week at support.deliverix@yopmail.com
               </p>
             </div>
           </div>
