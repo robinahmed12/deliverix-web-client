@@ -20,6 +20,85 @@ interface CustomerSupportChatWidgetProps {
   currentOrderId?: string;
 }
 
+function formatInline(str: string): React.ReactNode {
+  // Strip stray backticks
+  const withoutBackticks = str.replace(/`([^`]+)`/g, "$1").replace(/`+/g, "");
+
+  // If there are any bold tokens (**bold**), render cleanly as bold without raw asterisks
+  const parts = withoutBackticks.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={i} className="font-semibold text-foreground">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    return <span key={i}>{part.replace(/\*/g, "")}</span>;
+  });
+}
+
+function StructuredChatMessage({ content, isUser }: { content: string; isUser: boolean }) {
+  if (isUser) {
+    return <div className="whitespace-pre-wrap">{content}</div>;
+  }
+
+  // Pre-clean content defensively: strip divider bars, table dividers, header hashes
+  const cleaned = content
+    .replace(/^[-=_]{3,}$/gm, "")
+    .replace(/^\|?(\s*:?-+:?\s*\|)+\s*:?-+:?\s*\|?$/gm, "")
+    .replace(/^#{1,6}\s*(.+)$/gm, "$1:")
+    .trim();
+
+  const lines = cleaned.split("\n");
+
+  return (
+    <div className="space-y-1 text-sm leading-relaxed">
+      {lines.map((line, idx) => {
+        let text = line.trim();
+        if (!text) {
+          return <div key={idx} className="h-1" />;
+        }
+
+        // Table row fallback: | col1 | col2 |
+        if (text.startsWith("|") && text.endsWith("|")) {
+          const cells = text
+            .slice(1, -1)
+            .split("|")
+            .map((c) => c.trim().replace(/\*{1,3}/g, "").replace(/`+/g, ""))
+            .filter(Boolean);
+          if (cells.length > 0 && !/^(order|order id|status)$/i.test(cells[0]!)) {
+            text = `- ${cells.join(" — ")}`;
+          }
+        }
+
+        // Bullet item (- or •)
+        if (text.startsWith("- ") || text.startsWith("• ") || text.startsWith("* ")) {
+          const itemText = text.replace(/^[-•*]\s+/, "");
+          return (
+            <div key={idx} className="flex items-start gap-2 pl-1 my-0.5">
+              <span className="text-primary font-bold select-none text-xs leading-5">•</span>
+              <span className="flex-1">{formatInline(itemText)}</span>
+            </div>
+          );
+        }
+
+        // Section Header (ends with colon or starts with digit like "1. Title:")
+        if (text.endsWith(":") || /^\d+\.\s+[^:]+:?$/.test(text)) {
+          return (
+            <div key={idx} className="font-semibold text-foreground pt-1.5 pb-0.5 text-[13px] tracking-tight">
+              {formatInline(text)}
+            </div>
+          );
+        }
+
+        // Regular text line
+        return <div key={idx}>{formatInline(text)}</div>;
+      })}
+    </div>
+  );
+}
+
 export function CustomerSupportChatWidget({ currentOrderId }: CustomerSupportChatWidgetProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [inputMessage, setInputMessage] = React.useState("");
@@ -147,7 +226,7 @@ export function CustomerSupportChatWidget({ currentOrderId }: CustomerSupportCha
                         : "bg-muted text-foreground rounded-bl-none"
                     }`}
                   >
-                    <div className="whitespace-pre-wrap">{msg.content}</div>
+                    <StructuredChatMessage content={msg.content} isUser={msg.role === "user"} />
                   </div>
 
                   {msg.role === "user" && (
