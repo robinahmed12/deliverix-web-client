@@ -53,7 +53,7 @@ const GUARD_RULES: Array<{ prefix: string; permissions: string[] }> = [
   { prefix: "/service-types", permissions: ["config.manage"] },
   { prefix: "/reports", permissions: ["reports.view"] },
   { prefix: "/audit-logs", permissions: ["audit.view"] },
-  { prefix: "/notifications", permissions: ["notifications.view"] },
+  { prefix: "/notifications", permissions: [] },
   { prefix: "/settings/users/roles", permissions: ["roles.manage", "users.manage"] },
   { prefix: "/settings/users", permissions: ["users.view", "users.manage"] },
   // Personal settings render for every role.
@@ -137,16 +137,23 @@ export async function proxy(request: NextRequest) {
   // Authenticated but none of the page's permissions → their universal home.
   const isCustomer = claims.roles.includes("customer");
   const isPortalPath = request.nextUrl.pathname.startsWith("/portal");
+  const isNotificationPath = request.nextUrl.pathname.startsWith("/notifications");
 
   // If user is a customer trying to access internal operational routes (like /orders, /dispatch, /drivers, /reports, etc.)
-  if (isCustomer && !isPortalPath && request.nextUrl.pathname !== "/dashboard" && !request.nextUrl.pathname.startsWith("/settings")) {
+  if (
+    isCustomer &&
+    !isPortalPath &&
+    !isNotificationPath &&
+    request.nextUrl.pathname !== "/dashboard" &&
+    !request.nextUrl.pathname.startsWith("/settings")
+  ) {
     return finalize(NextResponse.redirect(new URL("/dashboard", request.url)), rotatedSetCookies, sessionInvalidated);
   }
 
   const allowed =
     required.length === 0 ||
     claims.permissions.some((p) => required.includes(p)) ||
-    (isCustomer && isPortalPath);
+    (isCustomer && (isPortalPath || isNotificationPath));
 
   if (!allowed) {
     return finalize(NextResponse.redirect(new URL("/dashboard", request.url)), rotatedSetCookies, sessionInvalidated);

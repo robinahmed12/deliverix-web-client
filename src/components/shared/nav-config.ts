@@ -106,6 +106,13 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["customer"],
   },
   {
+    label: "Notifications",
+    href: "/notifications",
+    icon: Bell,
+    group: "portal",
+    roles: ["customer"],
+  },
+  {
     label: "AI Support & FAQ",
     href: "/portal/support",
     icon: HelpCircle,

@@ -109,7 +109,7 @@ export function CustomerSupportChatWidget({ currentOrderId }: CustomerSupportCha
                   <CardTitle className="text-sm font-semibold flex items-center gap-1.5 text-white">
                     Deliverix AI Concierge
                     <Badge variant="secondary" className="text-[10px] bg-white/20 text-white border-none py-0">
-                      RAG Live
+                      Ask your query
                     </Badge>
                   </CardTitle>
                   <p className="text-[11px] text-white/80">Grounding from real-time order history</p>

@@ -4,7 +4,7 @@ import { NotificationsView } from "@/features/notifications/components/notificat
 
 export default function NotificationsPage() {
   return (
-    <div>
+    <div className="w-full space-y-6">
       <Breadcrumbs items={[{ label: "Notifications" }]} />
       <PageHeader
         title="Notifications"

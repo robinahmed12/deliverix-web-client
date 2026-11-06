@@ -12,9 +12,12 @@ import {
   useMarkAllNotificationsReadMutation,
   useMarkNotificationReadMutation,
 } from "../queries";
+import { useCurrentUser } from "@/features/auth/queries";
 import type { AppNotification } from "../types";
 
 export function NotificationsView() {
+  const { data: currentUser } = useCurrentUser();
+  const isCustomer = currentUser?.roles?.includes("customer");
   const [unreadOnly, setUnreadOnly] = React.useState(false);
   const notificationsQuery = useNotifications({ unreadOnly, pageSize: 100 });
   const markRead = useMarkNotificationReadMutation();
@@ -35,7 +38,7 @@ export function NotificationsView() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 w-full">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Button
@@ -93,7 +96,7 @@ export function NotificationsView() {
                 </p>
                 {n.orderId && (
                   <Link
-                    href={`/orders/${n.orderId}`}
+                    href={isCustomer ? `/portal/orders/${n.orderId}` : `/orders/${n.orderId}`}
                     onClick={() => handleOpen(n)}
                     className="mt-2 inline-block text-sm text-primary hover:underline"
                   >
