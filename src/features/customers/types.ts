@@ -86,3 +86,31 @@ export interface AddressPayload {
   longitude?: number | null;
   isDefault?: boolean;
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Customer Self-Service Portal Types (/customers/me)                         */
+/* -------------------------------------------------------------------------- */
+
+export interface CustomerStats {
+  activeOrderCount: number;
+  totalOrderCount: number;
+}
+
+export interface CustomerProfile extends CustomerListItem {
+  addresses: CustomerAddress[];
+  stats: CustomerStats;
+}
+
+export interface UpdateMyProfilePayload {
+  name?: string;
+  phone?: string | null;
+}
+
+export interface LinkAccountPayload {
+  customerId?: string;
+}
+
+export interface CancelOrderPayload {
+  reasonCode: string;
+  reasonText?: string | null;
+}

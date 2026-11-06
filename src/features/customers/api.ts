@@ -8,6 +8,10 @@ import type {
   AddressPayload,
   CreateCustomerPayload,
   UpdateCustomerPayload,
+  CustomerProfile,
+  UpdateMyProfilePayload,
+  LinkAccountPayload,
+  CancelOrderPayload,
 } from "./types";
 
 function buildListQuery(params: object): string {
@@ -97,5 +101,70 @@ export function deleteAddress(
 ): Promise<void> {
   return apiFetch(`/customers/${customerId}/addresses/${addressId}`, {
     method: "DELETE",
+  });
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Customer Self-Service (/customers/me)                                      */
+/* -------------------------------------------------------------------------- */
+
+export function getMyProfile(opts?: ApiFetchOptions): Promise<CustomerProfile> {
+  return apiFetch("/customers/me", opts);
+}
+
+export function updateMyProfile(data: UpdateMyProfilePayload): Promise<CustomerListItem> {
+  return apiFetch("/customers/me", {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export function linkCustomerAccount(data: LinkAccountPayload): Promise<CustomerListItem> {
+  return apiFetch("/customers/me/link-account", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function listMyAddresses(opts?: ApiFetchOptions): Promise<CustomerAddress[]> {
+  return apiFetch("/customers/me/addresses", opts);
+}
+
+export function createMyAddress(
+  data: AddressPayload,
+  idempotencyKey?: string,
+): Promise<CustomerAddress> {
+  return apiFetch("/customers/me/addresses", {
+    method: "POST",
+    body: JSON.stringify(data),
+    idempotencyKey,
+  });
+}
+
+export function updateMyAddress(
+  addressId: string,
+  data: AddressPayload,
+): Promise<CustomerAddress> {
+  return apiFetch(`/customers/me/addresses/${addressId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteMyAddress(addressId: string): Promise<void> {
+  return apiFetch(`/customers/me/addresses/${addressId}`, {
+    method: "DELETE",
+  });
+}
+
+export function customerCancelOrder(
+  orderId: string,
+  data: CancelOrderPayload,
+  idempotencyKey?: string,
+): Promise<unknown> {
+  return apiFetch(`/orders/${orderId}/cancel`, {
+    method: "POST",
+    body: JSON.stringify(data),
+    idempotencyKey,
   });
 }

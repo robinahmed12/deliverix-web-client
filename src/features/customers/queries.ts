@@ -15,6 +15,14 @@ import {
   createAddress as apiCreateAddress,
   updateAddress as apiUpdateAddress,
   deleteAddress as apiDeleteAddress,
+  getMyProfile,
+  updateMyProfile,
+  linkCustomerAccount,
+  listMyAddresses,
+  createMyAddress,
+  updateMyAddress,
+  deleteMyAddress,
+  customerCancelOrder,
 } from "./api";
 import type {
   AddressPayload,
@@ -24,6 +32,10 @@ import type {
   CustomerListPage,
   CustomerListItem,
   UpdateCustomerPayload,
+  CustomerProfile,
+  UpdateMyProfilePayload,
+  LinkAccountPayload,
+  CancelOrderPayload,
 } from "./types";
 
 /* -------------------------------------------------------------------------- */
@@ -37,6 +49,8 @@ export const customerKeys = {
   detail: (id: string) => [...customerKeys.all, "detail", id] as const,
   addresses: (id: string) =>
     [...customerKeys.all, "addresses", id] as const,
+  me: ["customers", "me"] as const,
+  myAddresses: ["customers", "me", "addresses"] as const,
 } as const;
 
 /* -------------------------------------------------------------------------- */
@@ -176,6 +190,147 @@ export function useDeleteAddressMutation(customerId: string) {
     },
   });
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Customer Portal Self-Service Hooks (/customers/me)                        */
+/* -------------------------------------------------------------------------- */
+
+export function useMyProfileQuery(initialData?: CustomerProfile) {
+  return useQuery({
+    queryKey: customerKeys.me,
+    queryFn: () => getMyProfile(),
+    initialData,
+    staleTime: 30_000,
+  });
+}
+
+export function useMyAddressesQuery(initialData?: CustomerAddress[]) {
+  return useQuery({
+    queryKey: customerKeys.myAddresses,
+    queryFn: () => listMyAddresses(),
+    initialData,
+    staleTime: 30_000,
+  });
+}
+
+export function useUpdateMyProfileMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateMyProfilePayload) => updateMyProfile(data),
+    onSuccess(updated) {
+      qc.setQueryData<CustomerProfile | undefined>(customerKeys.me, (prev) =>
+        prev ? { ...prev, ...updated } : undefined,
+      );
+      void qc.invalidateQueries({ queryKey: customerKeys.me });
+    },
+  });
+}
+
+export function useLinkAccountMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: LinkAccountPayload) => linkCustomerAccount(data),
+    onSuccess() {
+      void qc.invalidateQueries({ queryKey: customerKeys.me });
+      void qc.invalidateQueries({ queryKey: customerKeys.myAddresses });
+    },
+  });
+}
+
+export function useCreateMyAddressMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      data,
+      idempotencyKey,
+    }: {
+      data: AddressPayload;
+      idempotencyKey?: string;
+    }) => createMyAddress(data, idempotencyKey),
+    onSuccess() {
+      void qc.invalidateQueries({ queryKey: customerKeys.myAddresses });
+      void qc.invalidateQueries({ queryKey: customerKeys.me });
+    },
+  });
+}
+
+export function useUpdateMyAddressMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      addressId,
+      data,
+    }: {
+      addressId: string;
+      data: AddressPayload;
+    }) => updateMyAddress(addressId, data),
+    onSuccess() {
+      void qc.invalidateQueries({ queryKey: customerKeys.myAddresses });
+      void qc.invalidateQueries({ queryKey: customerKeys.me });
+    },
+  });
+}
+
+export function useDeleteMyAddressMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (addressId: string) => deleteMyAddress(addressId),
+    onSuccess() {
+      void qc.invalidateQueries({ queryKey: customerKeys.myAddresses });
+      void qc.invalidateQueries({ queryKey: customerKeys.me });
+    },
+  });
+}
+
+export function useCustomerCancelOrderMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      orderId,
+      data,
+      idempotencyKey,
+    }: {
+      orderId: string;
+      data: CancelOrderPayload;
+      idempotencyKey?: string;
+    }) => customerCancelOrder(orderId, data, idempotencyKey),
+    onSuccess() {
+      void qc.invalidateQueries({ queryKey: ["orders"] });
+      void qc.invalidateQueries({ queryKey: customerKeys.me });
+    },
+  });
+}
+
+export function useCustomerSelfServicePermissions() {
+  const { data: user } = useCurrentUser();
+  if (!user) {
+    return {
+      canViewProfile: false,
+      canUpdateProfile: false,
+      canManageAddresses: false,
+      canCancelOrder: false,
+    };
+  }
+  return {
+    canViewProfile:
+      user.permissions.includes("customers.me.view") ||
+      user.roles.includes("admin") ||
+      user.roles.includes("customer"),
+    canUpdateProfile:
+      user.permissions.includes("customers.me.update") ||
+      user.roles.includes("admin") ||
+      user.roles.includes("customer"),
+    canManageAddresses:
+      user.permissions.includes("customers.me.addresses") ||
+      user.roles.includes("admin") ||
+      user.roles.includes("customer"),
+    canCancelOrder:
+      user.permissions.includes("orders.me.cancel") ||
+      user.permissions.includes("orders.cancel") ||
+      user.roles.includes("customer"),
+  };
+}
+
 
 /* -------------------------------------------------------------------------- */
 /*  Permission helpers                                                         */

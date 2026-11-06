@@ -4,10 +4,13 @@ import {
   Bell,
   Clipboard,
   Contact,
+  HelpCircle,
   Layers,
   LayoutDashboard,
   Map,
+  MapPin,
   Package,
+  PackageCheck,
   Radar,
   ScrollText,
   Settings,
@@ -18,6 +21,7 @@ import {
 
 export type NavGroupKey =
   | "overview"
+  | "portal"
   | "operations"
   | "fleet"
   | "network"
@@ -36,6 +40,7 @@ export interface NavItem {
 
 const GROUP_ORDER: NavGroupKey[] = [
   "overview",
+  "portal",
   "operations",
   "fleet",
   "network",
@@ -45,6 +50,7 @@ const GROUP_ORDER: NavGroupKey[] = [
 
 export const GROUP_LABELS: Record<NavGroupKey, string> = {
   overview: "Overview",
+  portal: "Customer Portal",
   operations: "Operations",
   fleet: "Fleet",
   network: "Network",
@@ -63,6 +69,34 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/dashboard",
     icon: LayoutDashboard,
     group: "overview",
+  },
+  {
+    label: "Customer Portal",
+    href: "/portal",
+    icon: PackageCheck,
+    group: "portal",
+    permissions: ["customers.me.view"],
+  },
+  {
+    label: "My Orders",
+    href: "/portal/orders",
+    icon: Package,
+    group: "portal",
+    permissions: ["customers.me.view"],
+  },
+  {
+    label: "Saved Addresses",
+    href: "/portal/addresses",
+    icon: MapPin,
+    group: "portal",
+    permissions: ["customers.me.addresses"],
+  },
+  {
+    label: "AI Support & FAQ",
+    href: "/portal/support",
+    icon: HelpCircle,
+    group: "portal",
+    permissions: ["customers.me.view"],
   },
   {
     label: "Orders",
